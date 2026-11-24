@@ -101,6 +101,26 @@ class BilleteraTest {
     }
 
     @Test
+    void horasDebenRespetarLaPrecisionDeLaBaseDeDatos() {
+        Billetera billetera = usuarioConSaldo("10");
+
+        assertThatThrownBy(() -> billetera.acreditar(new BigDecimal("1.001")))
+                .isInstanceOf(SaldoInvalidoException.class);
+        assertThatThrownBy(() -> billetera.acreditar(new BigDecimal("1000000.00")))
+                .isInstanceOf(SaldoInvalidoException.class);
+        assertThat(billetera.getSaldoDisponible()).isEqualByComparingTo("10");
+    }
+
+    @Test
+    void saldoEnExcesoDePrecisionNoSeAcredita() {
+        Billetera billetera = usuarioConSaldo("999999.99");
+
+        assertThatThrownBy(() -> billetera.acreditar(new BigDecimal("0.01")))
+                .isInstanceOf(SaldoInvalidoException.class);
+        assertThat(billetera.getSaldoDisponible()).isEqualByComparingTo("999999.99");
+    }
+
+    @Test
     void transferirHorasReservadasConservaElTotalDeHoras() {
         Billetera aprendiz = usuarioConSaldo("5");
         Billetera tutor = new Billetera(

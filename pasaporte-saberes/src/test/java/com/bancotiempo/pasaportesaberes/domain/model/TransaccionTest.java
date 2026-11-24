@@ -12,6 +12,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class TransaccionTest {
     private final Persona persona = new Persona();
     private final Persona otraPersona = new Persona();
+    private final OffsetDateTime ahora = OffsetDateTime.now();
+    private final Oferta oferta = new Oferta(
+            6L,
+            otraPersona,
+            new Habilidad(1L, "Habilidad de prueba", "General"),
+            "Oferta de prueba",
+            new BigDecimal("1.00"),
+            Oferta.Modalidad.VIRTUAL,
+            null,
+            Oferta.DestinoHoras.BILLETERA_PROPIA,
+            null,
+            true,
+            ahora
+    );
     private final Billetera emisor = new Billetera(
             1L,
             Billetera.TipoBilletera.EMISOR,
@@ -38,16 +52,16 @@ class TransaccionTest {
     );
     private final Sesion sesion = new Sesion(
             5L,
-            null,
-            null,
-            null,
+            oferta,
+            persona,
+            ahora,
             null,
             Sesion.EstadoSesion.COMPLETADA,
-            null,
-            null,
+            ahora,
+            ahora,
             null,
             0,
-            null
+            ahora
     );
     private final Billetera usuario = new Billetera(
             2L,
@@ -86,6 +100,20 @@ class TransaccionTest {
                 null,
                 "bono-cero",
                 OffsetDateTime.now()
+        )).isInstanceOf(TransaccionInvalidaException.class);
+    }
+
+    @Test
+    void rechazaHorasFueraDePrecisionNumerica() {
+        assertThatThrownBy(() -> new Transaccion(
+        null,
+        Transaccion.TipoTransaccion.BONO,
+        new BigDecimal("1.001"),
+        emisor,
+        usuario,
+        null,
+        "bono-precision",
+        OffsetDateTime.now()
         )).isInstanceOf(TransaccionInvalidaException.class);
     }
 

@@ -3,6 +3,7 @@ package com.bancotiempo.pasaportesaberes.domain.model;
 import com.bancotiempo.pasaportesaberes.domain.exception.TransaccionInvalidaException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 
 public record Transaccion(
@@ -27,6 +28,7 @@ public record Transaccion(
 
     public Transaccion {
         validarDatosObligatorios(tipo, horas, billeteraOrigen, billeteraDestino);
+        horas = normalizarHoras(horas);
         validarBilleteras(tipo, billeteraOrigen, billeteraDestino);
         validarSesion(tipo, sesion);
         if (claveIdempotencia == null || claveIdempotencia.isBlank()) {
@@ -34,6 +36,17 @@ public record Transaccion(
         }
         if (creadaEn == null) {
             throw new TransaccionInvalidaException("La fecha de creación es obligatoria");
+        }
+    }
+
+    public void aplicar() {
+        switch (tipo) {
+            case RESERVA -> billeteraOrigen.reservar(horas);
+            case LIBERACION -> billeteraOrigen.liberar(horas);
+            case GANADA, DONADA ->
+                    billeteraOrigen.transferirReservadoA(billeteraDestino, horas);
+            case BONO, EXCEDENTE, RETIRO_FONDO ->
+                    billeteraOrigen.transferirDisponibleA(billeteraDestino, horas);
         }
     }
 
@@ -55,6 +68,20 @@ public record Transaccion(
         if (billeteraDestino == null) {
             throw new TransaccionInvalidaException("La billetera destino es obligatoria");
         }
+    }
+
+    private static BigDecimal normalizarHoras(BigDecimal horas) {
+        BigDecimal normalizadas;
+        try {
+            normalizadas = horas.setScale(2, RoundingMode.UNNECESSARY);
+        } catch (ArithmeticException exception) {
+            throw new TransaccionInvalidaException(
+                    "Las horas deben tener como máximo dos decimales");
+        }
+        if (normalizadas.precision() > 8) {
+            throw new TransaccionInvalidaException("Las horas exceden la precisión NUMERIC(8,2)");
+        }
+        return normalizadas;
     }
 
     private static void validarBilleteras(

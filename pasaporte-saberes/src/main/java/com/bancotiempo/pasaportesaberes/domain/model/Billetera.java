@@ -4,9 +4,13 @@ import com.bancotiempo.pasaportesaberes.domain.exception.SaldoInsuficienteExcept
 import com.bancotiempo.pasaportesaberes.domain.exception.SaldoInvalidoException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Objects;
 
 public class Billetera {
+    private static final int ESCALA_HORAS = 2;
+    private static final int PRECISION_HORAS = 8;
+
     public enum TipoBilletera {
         USUARIO,
         FONDO,
@@ -35,7 +39,7 @@ public class Billetera {
 
     public void reservar(BigDecimal horas) {
         validarBilleteraDeUsuario();
-        validarHoras(horas);
+        horas = validarHoras(horas);
         if (saldoDisponible.compareTo(horas) < 0) {
             throw new SaldoInsuficienteException(id, horas, saldoDisponible);
         }
@@ -47,7 +51,7 @@ public class Billetera {
 
     public void liberar(BigDecimal horas) {
         validarBilleteraDeUsuario();
-        validarHoras(horas);
+        horas = validarHoras(horas);
         if (saldoReservado.compareTo(horas) < 0) {
             throw new SaldoInsuficienteException(id, horas, saldoReservado);
         }
@@ -58,32 +62,77 @@ public class Billetera {
     }
 
     public void acreditar(BigDecimal horas) {
-        validarHoras(horas);
-        saldoDisponible = saldoDisponible.add(horas);
-        validarSaldos();
+        horas = validarHoras(horas);
+        BigDecimal nuevoDisponible = saldoDisponible.add(horas);
+        validarSaldos(nuevoDisponible, saldoReservado);
+        saldoDisponible = nuevoDisponible;
         version++;
     }
 
     public void debitar(BigDecimal horas) {
-        validarHoras(horas);
+        horas = validarHoras(horas);
         if (tipo != TipoBilletera.EMISOR && saldoDisponible.compareTo(horas) < 0) {
             throw new SaldoInsuficienteException(id, horas, saldoDisponible);
         }
 
-        saldoDisponible = saldoDisponible.subtract(horas);
-        validarSaldos();
+        BigDecimal nuevoDisponible = saldoDisponible.subtract(horas);
+        validarSaldos(nuevoDisponible, saldoReservado);
+        saldoDisponible = nuevoDisponible;
         version++;
     }
 
     public void debitarReservado(BigDecimal horas) {
         validarBilleteraDeUsuario();
-        validarHoras(horas);
+        horas = validarHoras(horas);
         if (saldoReservado.compareTo(horas) < 0) {
             throw new SaldoInsuficienteException(id, horas, saldoReservado);
         }
 
         saldoReservado = saldoReservado.subtract(horas);
         version++;
+    }
+
+    public void transferirDisponibleA(Billetera destino, BigDecimal horas) {
+        validarDestino(destino);
+        horas = validarHoras(horas);
+        validarTransferenciaDisponible(destino);
+        if (tipo != TipoBilletera.EMISOR && saldoDisponible.compareTo(horas) < 0) {
+            throw new SaldoInsuficienteException(id, horas, saldoDisponible);
+        }
+
+        BigDecimal nuevoOrigen = saldoDisponible.subtract(horas);
+        BigDecimal nuevoDestino = destino.saldoDisponible.add(horas);
+        validarSaldos(nuevoOrigen, saldoReservado);
+        destino.validarSaldos(nuevoDestino, destino.saldoReservado);
+
+        saldoDisponible = nuevoOrigen;
+        destino.saldoDisponible = nuevoDestino;
+        version++;
+        destino.version++;
+    }
+
+    public void transferirReservadoA(Billetera destino, BigDecimal horas) {
+        validarBilleteraDeUsuario();
+        validarDestino(destino);
+        horas = validarHoras(horas);
+        if (destino.tipo != TipoBilletera.USUARIO
+                && destino.tipo != TipoBilletera.FONDO) {
+            throw new SaldoInvalidoException(
+                    "Las horas reservadas solo pueden transferirse a USUARIO o FONDO");
+        }
+        if (saldoReservado.compareTo(horas) < 0) {
+            throw new SaldoInsuficienteException(id, horas, saldoReservado);
+        }
+
+        BigDecimal nuevoReservado = saldoReservado.subtract(horas);
+        BigDecimal nuevoDestino = destino.saldoDisponible.add(horas);
+        validarSaldos(saldoDisponible, nuevoReservado);
+        destino.validarSaldos(nuevoDestino, destino.saldoReservado);
+
+        saldoReservado = nuevoReservado;
+        destino.saldoDisponible = nuevoDestino;
+        version++;
+        destino.version++;
     }
 
     private void validarBilleteraDeUsuario() {
@@ -103,23 +152,68 @@ public class Billetera {
     }
 
     private void validarSaldos() {
-        if (saldoReservado.compareTo(BigDecimal.ZERO) < 0) {
+        validarSaldos(saldoDisponible, saldoReservado);
+    }
+
+    private void validarSaldos(BigDecimal disponible, BigDecimal reservado) {
+        validarPrecisionSaldo(disponible);
+        validarPrecisionSaldo(reservado);
+        if (reservado.compareTo(BigDecimal.ZERO) < 0) {
             throw new SaldoInvalidoException("El saldo reservado no puede ser negativo");
         }
         if (tipo != TipoBilletera.EMISOR
-                && saldoDisponible.compareTo(BigDecimal.ZERO) < 0) {
+                && disponible.compareTo(BigDecimal.ZERO) < 0) {
             throw new SaldoInvalidoException("El saldo disponible no puede ser negativo");
         }
     }
 
-    private static void validarHoras(BigDecimal horas) {
-        if (horas == null || horas.signum() <= 0) {
-            throw new SaldoInvalidoException("Las horas deben ser mayores que cero");
+    private void validarDestino(Billetera destino) {
+        Objects.requireNonNull(destino, "La billetera destino es obligatoria");
+        if (destino == this || (id != null && id.equals(destino.id))) {
+            throw new SaldoInvalidoException("El origen y el destino deben ser distintos");
         }
     }
 
+    private void validarTransferenciaDisponible(Billetera destino) {
+        boolean permitida =
+                (tipo == TipoBilletera.EMISOR && destino.tipo == TipoBilletera.USUARIO)
+                        || (tipo == TipoBilletera.USUARIO && destino.tipo == TipoBilletera.FONDO)
+                        || (tipo == TipoBilletera.FONDO && destino.tipo == TipoBilletera.USUARIO);
+        if (!permitida) {
+            throw new SaldoInvalidoException("Tipo de transferencia de saldo disponible inválido");
+        }
+    }
+
+    private static BigDecimal validarHoras(BigDecimal horas) {
+        if (horas == null || horas.signum() <= 0) {
+            throw new SaldoInvalidoException("Las horas deben ser mayores que cero");
+        }
+        return normalizarImporte(horas, "Las horas deben tener como máximo dos decimales");
+    }
+
     private static BigDecimal normalizar(BigDecimal valor) {
-        return valor == null ? BigDecimal.ZERO : valor;
+        return valor == null
+                ? BigDecimal.ZERO.setScale(ESCALA_HORAS)
+                : normalizarImporte(valor, "El saldo debe tener como máximo dos decimales");
+    }
+
+    private static BigDecimal normalizarImporte(BigDecimal valor, String mensaje) {
+        BigDecimal normalizado;
+        try {
+            normalizado = valor.setScale(ESCALA_HORAS, RoundingMode.UNNECESSARY);
+        } catch (ArithmeticException exception) {
+            throw new SaldoInvalidoException(mensaje);
+        }
+        if (normalizado.precision() > PRECISION_HORAS) {
+            throw new SaldoInvalidoException("El valor excede la precisión NUMERIC(8,2)");
+        }
+        return normalizado;
+    }
+
+    private static void validarPrecisionSaldo(BigDecimal saldo) {
+        if (saldo.precision() > PRECISION_HORAS) {
+            throw new SaldoInvalidoException("El saldo excede la precisión NUMERIC(8,2)");
+        }
     }
 
     public Long getId() {
