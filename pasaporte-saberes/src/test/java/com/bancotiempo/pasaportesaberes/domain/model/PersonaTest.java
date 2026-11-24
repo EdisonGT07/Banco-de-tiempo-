@@ -3,6 +3,7 @@ package com.bancotiempo.pasaportesaberes.domain.model;
 import com.bancotiempo.pasaportesaberes.domain.exception.PersonaInvalidaException;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -141,6 +142,8 @@ class PersonaTest {
     }
 
     private Rango rango(Rango.EscalaRango escala) {
-        return new Rango(1L, escala, "Rango", (short) 1, null, null, null, null, null);
+        return new Rango(
+                1L, escala, "Rango", (short) 1, BigDecimal.ONE, null, null, null, null
+        );
     }
 }
