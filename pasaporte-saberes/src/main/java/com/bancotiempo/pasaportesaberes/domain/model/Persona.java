@@ -35,7 +35,22 @@ public class Persona extends Usuario {
     }
 
     public void setDocHmac(String docHmac) {
+        if (docHmac == null || !docHmac.matches("[0-9a-fA-F]{64}")) {
+            throw new PersonaInvalidaException(
+                    "El documento debe almacenarse como un HMAC-SHA256 hexadecimal de 64 caracteres");
+        }
         this.docHmac = docHmac;
+    }
+
+    @Override
+    public void validarDatosObligatorios() {
+        super.validarDatosObligatorios();
+        if (docHmac == null) {
+            throw new PersonaInvalidaException("El HMAC del documento es obligatorio");
+        }
+        if (fechaNacimiento == null) {
+            throw new PersonaInvalidaException("La fecha de nacimiento es obligatoria");
+        }
     }
 
     public LocalDate getFechaNacimiento() {

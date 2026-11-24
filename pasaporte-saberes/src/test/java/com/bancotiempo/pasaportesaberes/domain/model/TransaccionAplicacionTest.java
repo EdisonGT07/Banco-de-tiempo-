@@ -10,8 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TransaccionAplicacionTest {
-    private final Persona aprendiz = new Persona();
-    private final Persona tutor = new Persona();
+    private final Persona aprendiz = persona(1L);
+    private final Persona tutor = persona(2L);
     private final OffsetDateTime ahora = OffsetDateTime.now();
     private final Oferta oferta = new Oferta(
             1L,
@@ -29,6 +29,31 @@ class TransaccionAplicacionTest {
     private final Sesion sesion = new Sesion(
             1L, oferta, aprendiz, ahora, null, Sesion.EstadoSesion.COMPLETADA,
             ahora, ahora, null, 0, ahora
+    );
+    private final Sesion sesionFondo = new Sesion(
+            2L,
+            new Oferta(
+                    2L,
+                    tutor,
+                    oferta.habilidad(),
+                    "Oferta para el fondo",
+                    BigDecimal.ONE,
+                    Oferta.Modalidad.VIRTUAL,
+                    null,
+                    Oferta.DestinoHoras.FONDO,
+                    null,
+                    true,
+                    ahora
+            ),
+            aprendiz,
+            ahora,
+            null,
+            Sesion.EstadoSesion.COMPLETADA,
+            ahora,
+            ahora,
+            null,
+            0,
+            ahora
     );
 
     @Test
@@ -74,7 +99,7 @@ class TransaccionAplicacionTest {
         Billetera origen = billetera(1L, Billetera.TipoBilletera.USUARIO, aprendiz, "0", "2");
         Billetera fondo = billetera(2L, Billetera.TipoBilletera.FONDO, null, "4", "0");
 
-        aplicar(Transaccion.TipoTransaccion.DONADA, origen, fondo, sesion, "2", "donada-1");
+        aplicar(Transaccion.TipoTransaccion.DONADA, origen, fondo, sesionFondo, "2", "donada-1");
 
         assertThat(origen.getSaldoReservado()).isEqualByComparingTo("0");
         assertThat(fondo.getSaldoDisponible()).isEqualByComparingTo("6");
@@ -135,7 +160,7 @@ class TransaccionAplicacionTest {
         aplicar(Transaccion.TipoTransaccion.GANADA,
                 aprendizWallet, tutorWallet, sesion, "2", "ganada-2");
         aplicar(Transaccion.TipoTransaccion.DONADA,
-                aprendizWallet, fondo, sesion, "1", "donada-2");
+                aprendizWallet, fondo, sesionFondo, "1", "donada-2");
         aplicar(Transaccion.TipoTransaccion.EXCEDENTE,
                 tutorWallet, fondo, sesion, "1", "excedente-3");
         aplicar(Transaccion.TipoTransaccion.RETIRO_FONDO,
@@ -160,10 +185,27 @@ class TransaccionAplicacionTest {
                 origen,
                 destino,
                 sesion,
-                clave,
+                claveDeterminista(tipo, origen, destino, sesion, clave),
                 ahora
         );
         transaccion.aplicar();
+    }
+
+    private String claveDeterminista(
+            Transaccion.TipoTransaccion tipo,
+            Billetera origen,
+            Billetera destino,
+            Sesion sesion,
+            String alternativa
+    ) {
+        return switch (tipo) {
+            case BONO -> Transaccion.claveBono(destino.getPersona().getId());
+            case RESERVA -> Transaccion.claveReserva(sesion.id());
+            case LIBERACION -> Transaccion.claveLiberacion(sesion.id());
+            case GANADA, DONADA -> Transaccion.claveLiquidacion(sesion.id());
+            case EXCEDENTE -> Transaccion.claveExcedente(sesion.id(), origen.getId());
+            case RETIRO_FONDO -> alternativa;
+        };
     }
 
     private Billetera billetera(
@@ -190,5 +232,11 @@ class TransaccionAplicacionTest {
                     .add(billetera.getSaldoReservado());
         }
         return total;
+    }
+
+    private static Persona persona(Long id) {
+        Persona persona = new Persona();
+        persona.setId(id);
+        return persona;
     }
 }

@@ -10,6 +10,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PersonaTest {
@@ -139,6 +140,22 @@ class PersonaTest {
                 Duration.ofDays(7)
         );
         assertThat(persona.getBloqueadoHasta()).isEqualTo(ahora.plusDays(10));
+    }
+
+    @Test
+    void exigeHmacSha256HexadecimalYDatosDeRegistroObligatorios() {
+        Persona persona = new Persona();
+        persona.setNombre("Persona de prueba");
+        persona.setCorreo("persona@example.com");
+        persona.setContrasenaHash("$2a$hash");
+        persona.setHabeasDataEn(ahora);
+
+        assertThatThrownBy(() -> persona.setDocHmac("hash-no-valido"))
+                .isInstanceOf(PersonaInvalidaException.class);
+        persona.setDocHmac("a".repeat(64));
+        persona.registrarFechaNacimiento(LocalDate.of(1990, 1, 1), fechaActual);
+
+        assertThatCode(persona::validarDatosObligatorios).doesNotThrowAnyException();
     }
 
     private Rango rango(Rango.EscalaRango escala) {

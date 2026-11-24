@@ -10,8 +10,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TransaccionTest {
-    private final Persona persona = new Persona();
-    private final Persona otraPersona = new Persona();
+    private final Persona persona = persona(2L);
+    private final Persona otraPersona = persona(3L);
+    private final Persona receptorRegalo = persona(4L);
     private final OffsetDateTime ahora = OffsetDateTime.now();
     private final Oferta oferta = new Oferta(
             6L,
@@ -63,10 +64,29 @@ class TransaccionTest {
             0,
             ahora
     );
+    private final Sesion sesionFondo = sesionConDestino(Oferta.DestinoHoras.FONDO, null);
+    private final Sesion sesionRegalo =
+            sesionConDestino(Oferta.DestinoHoras.REGALO, receptorRegalo);
     private final Billetera usuario = new Billetera(
             2L,
             Billetera.TipoBilletera.USUARIO,
             persona,
+            BigDecimal.ZERO,
+            BigDecimal.ZERO,
+            0
+    );
+    private final Billetera billeteraTutor = new Billetera(
+            5L,
+            Billetera.TipoBilletera.USUARIO,
+            otraPersona,
+            BigDecimal.ZERO,
+            BigDecimal.ZERO,
+            0
+    );
+    private final Billetera billeteraReceptor = new Billetera(
+            6L,
+            Billetera.TipoBilletera.USUARIO,
+            receptorRegalo,
             BigDecimal.ZERO,
             BigDecimal.ZERO,
             0
@@ -167,21 +187,36 @@ class TransaccionTest {
     @Test
     void donadaDebeIrAlFondoOaOtroUsuario() {
         assertThat(transaccion(
-                Transaccion.TipoTransaccion.DONADA, usuario, fondo, sesion, "donada-fondo"
+                Transaccion.TipoTransaccion.DONADA, usuario, fondo, sesionFondo, "donada-fondo"
         ).tipo()).isEqualTo(Transaccion.TipoTransaccion.DONADA);
         assertThat(transaccion(
-                Transaccion.TipoTransaccion.DONADA, usuario, otroUsuario, sesion, "donada-usuario"
+                Transaccion.TipoTransaccion.DONADA,
+                usuario,
+                billeteraReceptor,
+                sesionRegalo,
+                "donada-regalo"
         ).tipo()).isEqualTo(Transaccion.TipoTransaccion.DONADA);
 
         assertThatThrownBy(() -> transaccion(
-                Transaccion.TipoTransaccion.DONADA, usuario, emisor, sesion, "donada-emisor"
+                Transaccion.TipoTransaccion.DONADA, usuario, emisor, sesionFondo, "donada-emisor"
+        )).isInstanceOf(TransaccionInvalidaException.class);
+        assertThatThrownBy(() -> transaccion(
+                Transaccion.TipoTransaccion.DONADA,
+                usuario,
+                otroUsuario,
+                sesion,
+                "donada-destino-invalido"
         )).isInstanceOf(TransaccionInvalidaException.class);
     }
 
     @Test
     void excedenteYRetiroDebenUsarLaBilleteraFondo() {
         assertThat(transaccion(
-                Transaccion.TipoTransaccion.EXCEDENTE, usuario, fondo, sesion, "excedente"
+                Transaccion.TipoTransaccion.EXCEDENTE,
+                billeteraTutor,
+                fondo,
+                sesion,
+                "excedente"
         ).tipo()).isEqualTo(Transaccion.TipoTransaccion.EXCEDENTE);
         assertThat(transaccion(
                 Transaccion.TipoTransaccion.RETIRO_FONDO, fondo, usuario, null, "retiro"
@@ -206,6 +241,20 @@ class TransaccionTest {
         )).isInstanceOf(TransaccionInvalidaException.class);
     }
 
+    @Test
+    void exigeClaveDeterministaSegunElTipoYElRecurso() {
+        assertThatThrownBy(() -> new Transaccion(
+                null,
+                Transaccion.TipoTransaccion.BONO,
+                BigDecimal.ONE,
+                emisor,
+                usuario,
+                null,
+                "bono-999",
+                OffsetDateTime.now()
+        )).isInstanceOf(TransaccionInvalidaException.class);
+    }
+
     private Transaccion transaccion(
             Transaccion.TipoTransaccion tipo,
             Billetera origen,
@@ -220,8 +269,67 @@ class TransaccionTest {
                 origen,
                 destino,
                 sesion,
-                clave,
+                claveDeterminista(tipo, origen, destino, sesion, clave),
                 OffsetDateTime.now()
+        );
+    }
+
+    private String claveDeterminista(
+            Transaccion.TipoTransaccion tipo,
+            Billetera origen,
+            Billetera destino,
+            Sesion sesion,
+            String alternativa
+    ) {
+        if (sesion == null && tipo != Transaccion.TipoTransaccion.BONO
+                && tipo != Transaccion.TipoTransaccion.RETIRO_FONDO) {
+            return alternativa;
+        }
+        return switch (tipo) {
+            case BONO -> Transaccion.claveBono(destino.getPersona().getId());
+            case RESERVA -> Transaccion.claveReserva(sesion.id());
+            case LIBERACION -> Transaccion.claveLiberacion(sesion.id());
+            case GANADA, DONADA -> Transaccion.claveLiquidacion(sesion.id());
+            case EXCEDENTE -> Transaccion.claveExcedente(sesion.id(), origen.getId());
+            case RETIRO_FONDO -> alternativa;
+        };
+    }
+
+    private Persona persona(Long id) {
+        Persona persona = new Persona();
+        persona.setId(id);
+        return persona;
+    }
+
+    private Sesion sesionConDestino(
+            Oferta.DestinoHoras destinoHoras,
+            Persona receptor
+    ) {
+        Oferta ofertaDestino = new Oferta(
+                7L,
+                otraPersona,
+                oferta.habilidad(),
+                "Oferta de prueba",
+                BigDecimal.ONE,
+                Oferta.Modalidad.VIRTUAL,
+                null,
+                destinoHoras,
+                receptor,
+                true,
+                ahora
+        );
+        return new Sesion(
+                8L,
+                ofertaDestino,
+                persona,
+                ahora,
+                null,
+                Sesion.EstadoSesion.COMPLETADA,
+                ahora,
+                ahora,
+                null,
+                0,
+                ahora
         );
     }
 }
