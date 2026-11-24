@@ -43,6 +43,25 @@ class BilleteraTest {
     }
 
     @Test
+    void consumirHorasReservadasDebeIncrementarLaVersion() {
+        Billetera billetera = usuarioConSaldo("10");
+        billetera.reservar(new BigDecimal("3"));
+
+        billetera.debitarReservado(new BigDecimal("2"));
+
+        assertThat(billetera.getSaldoReservado()).isEqualByComparingTo("1");
+        assertThat(billetera.getVersion()).isEqualTo(2);
+    }
+
+    @Test
+    void noPermiteReservarHorasEnBilleteraDeSistema() {
+        Billetera fondo = billeteraSistema(Billetera.TipoBilletera.FONDO);
+
+        assertThatThrownBy(() -> fondo.reservar(BigDecimal.ONE))
+                .isInstanceOf(SaldoInvalidoException.class);
+    }
+
+    @Test
     void fondoNoPuedeQuedarConSaldoDisponibleNegativo() {
         Billetera fondo = new Billetera(
                 2L,
@@ -81,6 +100,38 @@ class BilleteraTest {
                 .isInstanceOf(SaldoInvalidoException.class);
     }
 
+    @Test
+    void transferirHorasReservadasConservaElTotalDeHoras() {
+        Billetera aprendiz = usuarioConSaldo("5");
+        Billetera tutor = new Billetera(
+                11L,
+                Billetera.TipoBilletera.USUARIO,
+                new Persona(),
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                0
+        );
+        BigDecimal totalAntes = total(aprendiz, tutor);
+
+        aprendiz.reservar(new BigDecimal("2"));
+        aprendiz.debitarReservado(new BigDecimal("2"));
+        tutor.acreditar(new BigDecimal("2"));
+
+        assertThat(total(aprendiz, tutor)).isEqualByComparingTo(totalAntes);
+    }
+
+    @Test
+    void noPermiteSaldoReservadoNegativoAlConstruirLaBilletera() {
+        assertThatThrownBy(() -> new Billetera(
+                10L,
+                Billetera.TipoBilletera.USUARIO,
+                persona,
+                BigDecimal.ZERO,
+                new BigDecimal("-1"),
+                0
+        )).isInstanceOf(SaldoInvalidoException.class);
+    }
+
     private Billetera usuarioConSaldo(String saldo) {
         return new Billetera(
                 10L,
@@ -90,5 +141,25 @@ class BilleteraTest {
                 BigDecimal.ZERO,
                 0
         );
+    }
+
+    private Billetera billeteraSistema(Billetera.TipoBilletera tipo) {
+        return new Billetera(
+                20L,
+                tipo,
+                null,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                0
+        );
+    }
+
+    private BigDecimal total(Billetera... billeteras) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (Billetera billetera : billeteras) {
+            total = total.add(billetera.getSaldoDisponible())
+                    .add(billetera.getSaldoReservado());
+        }
+        return total;
     }
 }

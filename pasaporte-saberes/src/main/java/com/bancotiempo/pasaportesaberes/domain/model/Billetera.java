@@ -34,6 +34,7 @@ public class Billetera {
     }
 
     public void reservar(BigDecimal horas) {
+        validarBilleteraDeUsuario();
         validarHoras(horas);
         if (saldoDisponible.compareTo(horas) < 0) {
             throw new SaldoInsuficienteException(id, horas, saldoDisponible);
@@ -45,6 +46,7 @@ public class Billetera {
     }
 
     public void liberar(BigDecimal horas) {
+        validarBilleteraDeUsuario();
         validarHoras(horas);
         if (saldoReservado.compareTo(horas) < 0) {
             throw new SaldoInsuficienteException(id, horas, saldoReservado);
@@ -74,6 +76,7 @@ public class Billetera {
     }
 
     public void debitarReservado(BigDecimal horas) {
+        validarBilleteraDeUsuario();
         validarHoras(horas);
         if (saldoReservado.compareTo(horas) < 0) {
             throw new SaldoInsuficienteException(id, horas, saldoReservado);
@@ -81,6 +84,13 @@ public class Billetera {
 
         saldoReservado = saldoReservado.subtract(horas);
         version++;
+    }
+
+    private void validarBilleteraDeUsuario() {
+        if (tipo != TipoBilletera.USUARIO) {
+            throw new SaldoInvalidoException(
+                    "Esta operación solo está permitida en una billetera USUARIO");
+        }
     }
 
     private void validarIdentidad() {
