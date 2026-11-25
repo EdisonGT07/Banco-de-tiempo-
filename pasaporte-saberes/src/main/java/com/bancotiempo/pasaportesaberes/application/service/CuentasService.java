@@ -10,7 +10,9 @@ import com.bancotiempo.pasaportesaberes.application.port.out.RepositorioBilleter
 import com.bancotiempo.pasaportesaberes.application.port.out.RepositorioTransaccion;
 import com.bancotiempo.pasaportesaberes.application.port.out.RepositorioUsuario;
 import com.bancotiempo.pasaportesaberes.application.port.out.UnidadDeTrabajo;
+import com.bancotiempo.pasaportesaberes.domain.model.Administrador;
 import com.bancotiempo.pasaportesaberes.domain.model.Billetera;
+import com.bancotiempo.pasaportesaberes.domain.model.EntidadAliada;
 import com.bancotiempo.pasaportesaberes.domain.model.Persona;
 import com.bancotiempo.pasaportesaberes.domain.model.Transaccion;
 import com.bancotiempo.pasaportesaberes.domain.model.Usuario;
@@ -132,11 +134,10 @@ public final class CuentasService implements CuentasUseCases {
             throw error(ErrorAplicacionException.Codigo.NO_AUTORIZADO,
                     "Correo o contraseña incorrectos");
         }
-        if (!(usuario instanceof Persona persona)) {
-            throw error(ErrorAplicacionException.Codigo.NO_AUTORIZADO,
-                    "Este acceso solo está habilitado para personas");
-        }
-        return new SesionAutenticada(tokens.generarTokenAcceso(usuario.getId()), perfil(persona));
+        return new SesionAutenticada(
+                tokens.generarTokenAcceso(usuario.getId()),
+                perfil(usuario)
+        );
     }
 
     @Override
@@ -145,11 +146,7 @@ public final class CuentasService implements CuentasUseCases {
                 .orElseThrow(() -> error(
                         ErrorAplicacionException.Codigo.NO_ENCONTRADO,
                         "No se encontró el usuario"));
-        if (!(usuario instanceof Persona persona)) {
-            throw error(ErrorAplicacionException.Codigo.NO_AUTORIZADO,
-                    "El perfil personal solo está disponible para personas");
-        }
-        return perfil(persona);
+        return perfil(usuario);
     }
 
     private static void validarRegistro(RegistroUsuario solicitud) {
@@ -167,15 +164,55 @@ public final class CuentasService implements CuentasUseCases {
         }
     }
 
-    private static Perfil perfil(Persona persona) {
-        return new Perfil(
-                persona.getId(),
-                persona.getNombre(),
-                persona.getCorreo(),
-                persona.getFechaNacimiento(),
-                persona.getZona(),
-                persona.getEstrato(),
-                persona.getEstado()
+    private static Perfil perfil(Usuario usuario) {
+        if (usuario instanceof Persona persona) {
+            return new Perfil(
+                    persona.getId(),
+                    persona.getNombre(),
+                    persona.getCorreo(),
+                    persona.getFechaNacimiento(),
+                    persona.getZona(),
+                    persona.getEstrato(),
+                    persona.getEstado(),
+                    TipoCuenta.PERSONA,
+                    null,
+                    null,
+                    null
+            );
+        }
+        if (usuario instanceof EntidadAliada entidad) {
+            return new Perfil(
+                    entidad.getId(),
+                    entidad.getNombre(),
+                    entidad.getCorreo(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    TipoCuenta.ENTIDAD,
+                    entidad.getTipoEntidad(),
+                    entidad.getCodigoInstitucional(),
+                    null
+            );
+        }
+        if (usuario instanceof Administrador administrador) {
+            return new Perfil(
+                    administrador.getId(),
+                    administrador.getNombre(),
+                    administrador.getCorreo(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    TipoCuenta.ADMIN,
+                    null,
+                    null,
+                    administrador.getNivelAcceso()
+            );
+        }
+        throw error(
+                ErrorAplicacionException.Codigo.NO_AUTORIZADO,
+                "El tipo de cuenta no está habilitado para iniciar sesión"
         );
     }
 

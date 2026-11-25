@@ -27,6 +27,12 @@ public interface CuentasUseCases {
     record CredencialesInicioSesion(String correo, String contrasena) {
     }
 
+    enum TipoCuenta {
+        PERSONA,
+        ENTIDAD,
+        ADMIN
+    }
+
     record Perfil(
             Long id,
             String nombre,
@@ -34,8 +40,35 @@ public interface CuentasUseCases {
             LocalDate fechaNacimiento,
             Persona.Zona zona,
             Short estrato,
-            Persona.Estado estado
+            Persona.Estado estado,
+            TipoCuenta tipoCuenta,
+            String tipoEntidad,
+            String codigoInstitucional,
+            Short nivelAcceso
     ) {
+        public Perfil(
+                Long id,
+                String nombre,
+                String correo,
+                LocalDate fechaNacimiento,
+                Persona.Zona zona,
+                Short estrato,
+                Persona.Estado estado
+        ) {
+            this(
+                    id,
+                    nombre,
+                    correo,
+                    fechaNacimiento,
+                    zona,
+                    estrato,
+                    estado,
+                    TipoCuenta.PERSONA,
+                    null,
+                    null,
+                    null
+            );
+        }
     }
 
     record SesionAutenticada(String token, Perfil perfil) {
