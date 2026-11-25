@@ -1,4 +1,8 @@
 import './App.css'
+import { AuthProvider } from './auth/AuthContext'
+import { useAuth } from './auth/useAuth'
+import { AccountPanel } from './features/auth/AccountPanel'
+import { LearningDashboard } from './features/learning/LearningDashboard'
 
 const areas = [
   { number: '01', name: 'Tecnología', detail: 'Herramientas digitales y programación' },
@@ -7,6 +11,24 @@ const areas = [
 ]
 
 function App() {
+  return (
+    <AuthProvider>
+      <PaginaPrincipal />
+    </AuthProvider>
+  )
+}
+
+function PaginaPrincipal() {
+  const { perfil, cargandoPerfil } = useAuth()
+
+  if (cargandoPerfil) {
+    return <main className="app-initializing" role="status">Cargando tu espacio...</main>
+  }
+
+  return perfil ? <LearningDashboard /> : <PaginaPublica />
+}
+
+function PaginaPublica() {
   return (
     <main>
       <header className="topbar">
@@ -17,8 +39,9 @@ function App() {
         <nav aria-label="Navegación principal">
           <a href="#como-funciona">Cómo funciona</a>
           <a href="#areas">Áreas de saber</a>
+          <a href="#cuenta">Mi cuenta</a>
         </nav>
-        <a className="button button-outline" href="#empezar">Conoce el proyecto</a>
+        <a className="button button-outline" href="#cuenta">Ingresar</a>
       </header>
 
       <section className="hero">
@@ -28,15 +51,19 @@ function App() {
           <p className="hero-description">
             Una comunidad donde intercambiamos conocimientos, crecemos juntos y cada hora compartida cuenta.
           </p>
-          <a className="button button-primary" href="#como-funciona">
-            Descubre cómo funciona <span aria-hidden="true">→</span>
+          <a className="button button-primary" href="#cuenta">
+            Únete a la comunidad <span aria-hidden="true">→</span>
           </a>
           <div className="hero-note">
             <span className="note-line" />
             <p>Un saber compartido puede abrir nuevos caminos.</p>
           </div>
         </div>
-        <div className="hero-art" aria-label="Ilustración abstracta de intercambio de conocimientos" role="img">
+        <div
+          className="hero-art"
+          aria-label="Ilustración abstracta de intercambio de conocimientos"
+          role="img"
+        >
           <div className="art-orbit orbit-one" />
           <div className="art-orbit orbit-two" />
           <div className="art-center"><span>+</span></div>
@@ -80,10 +107,14 @@ function App() {
         </div>
       </section>
 
+      <AccountPanel />
+
       <section className="closing" id="empezar">
         <p className="eyebrow">EL PRÓXIMO PASO EMPIEZA CONTIGO</p>
         <h2>Lo que sabes puede<br />inspirar a alguien.</h2>
-        <a className="button button-light" href="#como-funciona">Conoce la propuesta <span aria-hidden="true">→</span></a>
+        <a className="button button-light" href="#cuenta">
+          Crea tu cuenta <span aria-hidden="true">→</span>
+        </a>
       </section>
 
       <footer>

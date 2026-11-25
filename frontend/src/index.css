@@ -8,9 +8,10 @@
   --orange: #d78a56;
   --line: #e6e8df;
   --serif: Georgia, 'Times New Roman', serif;
+  --sans: Inter, 'Segoe UI', sans-serif;
   color: var(--ink);
   background: var(--paper);
-  font-family: Inter, 'Segoe UI', sans-serif;
+  font-family: var(--sans);
   font-synthesis: none;
   font-optical-sizing: auto;
   font-weight: 400;
