@@ -16,6 +16,7 @@ import com.bancotiempo.pasaportesaberes.domain.model.Transaccion;
 import com.bancotiempo.pasaportesaberes.domain.model.Usuario;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Objects;
 
 public final class CuentasService implements CuentasUseCases {
@@ -81,7 +82,7 @@ public final class CuentasService implements CuentasUseCases {
             persona.validarMayorDeEdad(reloj.hoy());
 
             Persona guardada = usuarios.guardarPersona(persona);
-            Billetera wallet = billeteras.guardar(new Billetera(
+            Billetera walletCreada = billeteras.guardar(new Billetera(
                     null,
                     Billetera.TipoBilletera.USUARIO,
                     guardada,
@@ -89,10 +90,15 @@ public final class CuentasService implements CuentasUseCases {
                     BigDecimal.ZERO,
                     0
             ));
-            Billetera emisor = billeteras.buscarSistema(Billetera.TipoBilletera.EMISOR)
+            Billetera emisorCandidato =
+                    billeteras.buscarSistema(Billetera.TipoBilletera.EMISOR)
                     .orElseThrow(() -> error(
                             ErrorAplicacionException.Codigo.NO_ENCONTRADO,
                             "No está configurada la billetera EMISOR"));
+            List<Billetera> bloqueadas = billeteras.bloquearPorIds(
+                    List.of(emisorCandidato.getId(), walletCreada.getId()));
+            Billetera wallet = buscarBloqueada(bloqueadas, walletCreada.getId());
+            Billetera emisor = buscarBloqueada(bloqueadas, emisorCandidato.getId());
             Transaccion bono = new Transaccion(
                     null,
                     Transaccion.TipoTransaccion.BONO,
@@ -171,6 +177,14 @@ public final class CuentasService implements CuentasUseCases {
                 persona.getEstrato(),
                 persona.getEstado()
         );
+    }
+
+    private static Billetera buscarBloqueada(List<Billetera> billeteras, Long id) {
+        return billeteras.stream()
+                .filter(billetera -> Objects.equals(billetera.getId(), id))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "No se pudo bloquear la billetera requerida"));
     }
 
     private static ErrorAplicacionException error(

@@ -104,6 +104,10 @@ public class Persona extends Usuario {
         return bloqueadoHasta;
     }
 
+    public void setBloqueadoHasta(OffsetDateTime bloqueadoHasta) {
+        this.bloqueadoHasta = bloqueadoHasta;
+    }
+
     public boolean estaBloqueadaEn(OffsetDateTime ahora) {
         if (ahora == null) {
             throw new PersonaInvalidaException("La fecha de evaluación es obligatoria");

@@ -1,0 +1,3 @@
+INSERT INTO billetera (tipo)
+VALUES ('EMISOR'), ('FONDO')
+ON CONFLICT (tipo) WHERE tipo <> 'USUARIO' DO NOTHING;

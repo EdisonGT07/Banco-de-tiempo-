@@ -14,6 +14,7 @@ import com.bancotiempo.pasaportesaberes.domain.model.Transaccion;
 
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import java.util.List;
 import java.util.Objects;
 
 public final class HorasService implements HorasUseCases {
@@ -63,8 +64,27 @@ public final class HorasService implements HorasUseCases {
             }
 
             Persona persona = buscarPersona(solicitud.personaId());
-            Billetera wallet = billeteras.buscarPorPersona(persona.getId())
+            Billetera walletCandidata = billeteras.buscarPorPersona(persona.getId())
                     .orElseThrow(() -> noEncontrado("No se encontró la billetera personal"));
+            Billetera fondoCandidato =
+                    billeteras.buscarSistema(Billetera.TipoBilletera.FONDO)
+                            .orElseThrow(() -> noEncontrado(
+                                    "No está configurada la billetera FONDO"));
+            List<Billetera> bloqueadas = billeteras.bloquearPorIds(
+                    List.of(walletCandidata.getId(), fondoCandidato.getId()));
+            Billetera wallet = buscarBloqueada(bloqueadas, walletCandidata.getId());
+            Billetera fondo = buscarBloqueada(bloqueadas, fondoCandidato.getId());
+
+            var retiroTrasBloqueo =
+                    transacciones.buscarPorClaveIdempotencia(solicitud.claveIdempotencia());
+            if (retiroTrasBloqueo.isPresent()) {
+                if (esMismoRetiro(retiroTrasBloqueo.get(), solicitud)) {
+                    return retiroTrasBloqueo.get();
+                }
+                throw error(ErrorAplicacionException.Codigo.CONFLICTO,
+                        "La clave de idempotencia ya se usó para otro movimiento");
+            }
+
             if (!politicaFondo.puedeRetirar(persona, wallet)) {
                 throw error(ErrorAplicacionException.Codigo.NO_AUTORIZADO,
                         "La persona no cumple los requisitos para retirar del fondo");
@@ -78,9 +98,6 @@ public final class HorasService implements HorasUseCases {
                         "El retiro supera el máximo mensual configurado");
             }
 
-            Billetera fondo = billeteras.buscarSistema(Billetera.TipoBilletera.FONDO)
-                    .orElseThrow(() -> noEncontrado(
-                            "No está configurada la billetera FONDO"));
             Transaccion transaccion = new Transaccion(
                     null,
                     Transaccion.TipoTransaccion.RETIRO_FONDO,
@@ -124,6 +141,14 @@ public final class HorasService implements HorasUseCases {
                 existente.billeteraDestino().getPersona().getId(),
                 solicitud.personaId()
         );
+    }
+
+    private static Billetera buscarBloqueada(List<Billetera> billeteras, Long id) {
+        return billeteras.stream()
+                .filter(billetera -> Objects.equals(billetera.getId(), id))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "No se pudo bloquear la billetera requerida"));
     }
 
     private static ErrorAplicacionException noEncontrado(String mensaje) {

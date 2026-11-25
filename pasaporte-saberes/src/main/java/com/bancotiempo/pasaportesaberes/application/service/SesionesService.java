@@ -30,6 +30,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.HexFormat;
 import java.util.Objects;
 import java.util.Optional;
@@ -96,8 +100,10 @@ public final class SesionesService implements SesionesUseCases {
             Persona aprendiz = buscarPersona(aprendizId);
             aprendiz.validarPuedeParticipar(reloj.ahora());
             String clave = Transaccion.claveReserva(sesion.id());
-            Billetera wallet = billeteras.buscarPorPersona(aprendizId)
+            Billetera walletCandidata = billeteras.buscarPorPersona(aprendizId)
                     .orElseThrow(() -> noEncontrado("No se encontró la billetera del aprendiz"));
+            Billetera wallet = bloquearBilleteras(List.of(walletCandidata))
+                    .get(walletCandidata.getId());
             Optional<Transaccion> existente = transacciones.buscarPorClaveIdempotencia(clave);
             if (existente.isPresent()) {
                 if (sesion.estado() == Sesion.EstadoSesion.RESERVADA
@@ -140,9 +146,12 @@ public final class SesionesService implements SesionesUseCases {
             Sesion cancelada = sesion.cancelar(actor, reloj.ahora());
             if (sesion.estado() == Sesion.EstadoSesion.RESERVADA) {
                 String clave = Transaccion.claveLiberacion(sesion.id());
-                Billetera wallet = billeteras.buscarPorPersona(sesion.aprendiz().getId())
+                Billetera walletCandidata =
+                        billeteras.buscarPorPersona(sesion.aprendiz().getId())
                         .orElseThrow(() -> noEncontrado(
                                 "No se encontró la billetera del aprendiz"));
+                Billetera wallet = bloquearBilleteras(List.of(walletCandidata))
+                        .get(walletCandidata.getId());
                 Optional<Transaccion> existente =
                         transacciones.buscarPorClaveIdempotencia(clave);
                 if (existente.isPresent()) {
@@ -336,31 +345,48 @@ public final class SesionesService implements SesionesUseCases {
 
     private ExcedentePendiente liquidar(Sesion sesion) {
         Oferta oferta = sesion.oferta();
-        Billetera aprendiz = billeteras.buscarPorPersona(sesion.aprendiz().getId())
+        Billetera aprendizCandidata =
+                billeteras.buscarPorPersona(sesion.aprendiz().getId())
                 .orElseThrow(() -> noEncontrado("No se encontró la billetera del aprendiz"));
-        Billetera destino;
+        Billetera destinoCandidato;
         Transaccion.TipoTransaccion tipo;
         switch (oferta.destinoHoras()) {
             case BILLETERA_PROPIA -> {
                 tipo = Transaccion.TipoTransaccion.GANADA;
-                destino = billeteras.buscarPorPersona(oferta.tutor().getId())
+                destinoCandidato = billeteras.buscarPorPersona(oferta.tutor().getId())
                         .orElseThrow(() -> noEncontrado(
                                 "No se encontró la billetera del tutor"));
             }
             case FONDO -> {
                 tipo = Transaccion.TipoTransaccion.DONADA;
-                destino = billeteras.buscarSistema(Billetera.TipoBilletera.FONDO)
+                destinoCandidato = billeteras.buscarSistema(Billetera.TipoBilletera.FONDO)
                         .orElseThrow(() -> noEncontrado(
                                 "No está configurada la billetera FONDO"));
             }
             case REGALO -> {
                 tipo = Transaccion.TipoTransaccion.DONADA;
-                destino = billeteras.buscarPorPersona(oferta.receptorRegalo().getId())
+                destinoCandidato = billeteras.buscarPorPersona(oferta.receptorRegalo().getId())
                         .orElseThrow(() -> noEncontrado(
                                 "No se encontró la billetera del receptor del regalo"));
             }
             default -> throw new IllegalStateException("Destino de horas no soportado");
         }
+
+        Billetera fondoCandidato = tipo == Transaccion.TipoTransaccion.GANADA
+                ? billeteras.buscarSistema(Billetera.TipoBilletera.FONDO)
+                .orElseThrow(() -> noEncontrado("No está configurada la billetera FONDO"))
+                : null;
+        List<Billetera> candidatas = new ArrayList<>(
+                List.of(aprendizCandidata, destinoCandidato));
+        if (fondoCandidato != null) {
+            candidatas.add(fondoCandidato);
+        }
+        Map<Long, Billetera> bloqueadas = bloquearBilleteras(candidatas);
+        Billetera aprendiz = bloqueadas.get(aprendizCandidata.getId());
+        Billetera destino = bloqueadas.get(destinoCandidato.getId());
+        Billetera fondo = fondoCandidato == null
+                ? null
+                : bloqueadas.get(fondoCandidato.getId());
 
         String clave = Transaccion.claveLiquidacion(sesion.id());
         Optional<Transaccion> existente = transacciones.buscarPorClaveIdempotencia(clave);
@@ -386,12 +412,16 @@ public final class SesionesService implements SesionesUseCases {
         }
 
         if (tipo == Transaccion.TipoTransaccion.GANADA && liquidacionNueva) {
-            return aplicarTope(sesion, destino);
+            return aplicarTope(sesion, destino, fondo);
         }
         return null;
     }
 
-    private ExcedentePendiente aplicarTope(Sesion sesion, Billetera tutor) {
+    private ExcedentePendiente aplicarTope(
+            Sesion sesion,
+            Billetera tutor,
+            Billetera fondo
+    ) {
         BigDecimal limite = politicaTope.maximoSaldoDisponible();
         if (limite == null || limite.signum() <= 0) {
             throw new IllegalStateException("El tope de saldo no está configurado");
@@ -400,8 +430,6 @@ public final class SesionesService implements SesionesUseCases {
         if (excedente.signum() <= 0) {
             return null;
         }
-        Billetera fondo = billeteras.buscarSistema(Billetera.TipoBilletera.FONDO)
-                .orElseThrow(() -> noEncontrado("No está configurada la billetera FONDO"));
         String clave = Transaccion.claveExcedente(sesion.id(), tutor.getId());
         if (transacciones.buscarPorClaveIdempotencia(clave).isEmpty()) {
             Transaccion transaccion = new Transaccion(
@@ -424,8 +452,26 @@ public final class SesionesService implements SesionesUseCases {
     }
 
     private Sesion buscarSesion(Long id) {
-        return sesiones.buscarPorId(id)
+        return sesiones.bloquearPorId(id)
                 .orElseThrow(() -> noEncontrado("No se encontró la sesión"));
+    }
+
+    private Map<Long, Billetera> bloquearBilleteras(List<Billetera> candidatas) {
+        List<Long> ids = candidatas.stream()
+                .map(Billetera::getId)
+                .distinct()
+                .sorted()
+                .toList();
+        List<Billetera> bloqueadas = billeteras.bloquearPorIds(ids);
+        if (bloqueadas.size() != ids.size()) {
+            throw new IllegalStateException(
+                    "No se pudieron bloquear todas las billeteras requeridas");
+        }
+        Map<Long, Billetera> porId = new HashMap<>();
+        for (Billetera billetera : bloqueadas) {
+            porId.put(billetera.getId(), billetera);
+        }
+        return porId;
     }
 
     private Persona buscarPersona(Long id) {
