@@ -1,5 +1,6 @@
 package com.bancotiempo.pasaportesaberes.infrastructure.adapter.out.storage;
 
+import com.bancotiempo.pasaportesaberes.application.ErrorAplicacionException;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -15,7 +16,7 @@ class SupabaseStorageAlmacenEvidenciasTest {
                         1024
                 );
 
-        assertThrows(IllegalArgumentException.class, () -> almacen.guardar(
+        assertThrows(ErrorAplicacionException.class, () -> almacen.guardar(
                 17L,
                 new byte[]{1, 2, 3},
                 "image/jpeg"

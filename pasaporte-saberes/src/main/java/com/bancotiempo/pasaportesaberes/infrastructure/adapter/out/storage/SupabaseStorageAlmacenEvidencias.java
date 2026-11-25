@@ -1,6 +1,8 @@
 package com.bancotiempo.pasaportesaberes.infrastructure.adapter.out.storage;
 
+import com.bancotiempo.pasaportesaberes.application.ErrorAplicacionException;
 import com.bancotiempo.pasaportesaberes.application.port.out.AlmacenEvidencias;
+import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -40,7 +42,7 @@ public class SupabaseStorageAlmacenEvidencias implements AlmacenEvidencias {
             throw new IllegalArgumentException("El id de sesión debe ser positivo");
         }
         if (contenido == null || contenido.length == 0 || contenido.length > maximoBytes) {
-            throw new IllegalArgumentException(
+            throw validacion(
                     "La foto debe tener contenido y no superar el tamaño permitido");
         }
         validarConfiguracion();
@@ -88,9 +90,14 @@ public class SupabaseStorageAlmacenEvidencias implements AlmacenEvidencias {
 
     private static MediaType validarTipoYContenido(String tipoContenido, byte[] contenido) {
         if (tipoContenido == null || tipoContenido.isBlank()) {
-            throw new IllegalArgumentException("El tipo de contenido de la foto es obligatorio");
+            throw validacion("El tipo de contenido de la foto es obligatorio");
         }
-        MediaType tipo = MediaType.parseMediaType(tipoContenido);
+        final MediaType tipo;
+        try {
+            tipo = MediaType.parseMediaType(tipoContenido);
+        } catch (InvalidMediaTypeException exception) {
+            throw validacion("El tipo de contenido de la foto no es válido");
+        }
         String subtipo = tipo.getSubtype().toLowerCase(Locale.ROOT);
         boolean jpeg = "image".equalsIgnoreCase(tipo.getType())
                 && "jpeg".equals(subtipo)
@@ -115,10 +122,17 @@ public class SupabaseStorageAlmacenEvidencias implements AlmacenEvidencias {
                 && coincide(contenido, 0, "RIFF")
                 && coincide(contenido, 8, "WEBP");
         if (!jpeg && !png && !webp) {
-            throw new IllegalArgumentException(
+            throw validacion(
                     "La evidencia solo admite fotos JPEG, PNG o WebP con firma válida");
         }
         return MediaType.parseMediaType("image/" + subtipo);
+    }
+
+    private static ErrorAplicacionException validacion(String mensaje) {
+        return new ErrorAplicacionException(
+                ErrorAplicacionException.Codigo.VALIDACION,
+                mensaje
+        );
     }
 
     private static boolean coincide(byte[] bytes, int inicio, String firma) {
