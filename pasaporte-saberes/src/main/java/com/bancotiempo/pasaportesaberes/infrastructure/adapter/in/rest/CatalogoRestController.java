@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/catalogo")
@@ -28,6 +30,22 @@ public class CatalogoRestController {
 
     public CatalogoRestController(CatalogoUseCases catalogo) {
         this.catalogo = catalogo;
+    }
+
+    @GetMapping("/habilidades")
+    public List<CatalogoUseCases.HabilidadPublica> listarHabilidades() {
+        return catalogo.listarHabilidades();
+    }
+
+    @PostMapping("/habilidades")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CatalogoUseCases.HabilidadPublica registrarHabilidad(
+            @Valid @RequestBody NuevaHabilidadRequest request
+    ) {
+        return catalogo.registrarHabilidad(
+                new CatalogoUseCases.NuevaHabilidad(
+                        request.nombre(),
+                        request.categoria()));
     }
 
     @PostMapping("/ofertas")
@@ -99,5 +117,11 @@ public class CatalogoRestController {
     }
 
     public record SolicitudAprendizajeRequest(@NotNull Long habilidadId) {
+    }
+
+    public record NuevaHabilidadRequest(
+            @NotBlank String nombre,
+            @NotBlank String categoria
+    ) {
     }
 }

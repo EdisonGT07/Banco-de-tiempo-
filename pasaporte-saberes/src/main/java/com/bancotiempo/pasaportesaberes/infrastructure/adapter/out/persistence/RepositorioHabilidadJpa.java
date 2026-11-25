@@ -29,6 +29,13 @@ public class RepositorioHabilidadJpa implements RepositorioHabilidad {
                 .toList();
     }
 
+    @Override
+    public Habilidad guardar(Habilidad habilidad) {
+        HabilidadJpaEntity guardada = habilidades.save(
+                new HabilidadJpaEntity(habilidad.nombre(), habilidad.categoria()));
+        return aDominio(guardada);
+    }
+
     static Habilidad aDominio(HabilidadJpaEntity habilidad) {
         return new Habilidad(habilidad.getId(), habilidad.getNombre(), habilidad.getCategoria());
     }

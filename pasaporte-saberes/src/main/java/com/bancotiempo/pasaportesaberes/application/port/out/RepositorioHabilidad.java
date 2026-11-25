@@ -9,4 +9,6 @@ public interface RepositorioHabilidad {
     Optional<Habilidad> buscarPorId(Long id);
 
     List<Habilidad> listarTodas();
+
+    Habilidad guardar(Habilidad habilidad);
 }

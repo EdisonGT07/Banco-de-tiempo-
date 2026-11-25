@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { ApiError } from '../../services/api'
 import type { PerfilCuenta, RegistroCuenta, Zona } from '../../services/cuentas'
 import { useAuth } from '../../auth/useAuth'
+import { ArrowRight } from 'lucide-react'
 
 type ModoFormulario = 'login' | 'registro'
 
@@ -101,7 +102,7 @@ export function AccountPanel() {
     <section className="account-section" id="cuenta">
       <div className="account-intro">
         <p className="eyebrow">TU ESPACIO EN LA COMUNIDAD</p>
-        <h2>Empieza a compartir<br /><span>lo que sabes.</span></h2>
+        <h2>Empieza a compartir<br /><em>lo que sabes.</em></h2>
         <p>Ingresa o crea tu cuenta para dar el siguiente paso en Pasaporte de Saberes.</p>
       </div>
 
@@ -249,7 +250,7 @@ export function AccountPanel() {
                   : modo === 'login'
                     ? 'Ingresar a mi cuenta'
                     : 'Crear cuenta'}
-                {!enviando && <span aria-hidden="true">→</span>}
+                {!enviando && <ArrowRight size={15} />}
               </button>
             </form>
           </>

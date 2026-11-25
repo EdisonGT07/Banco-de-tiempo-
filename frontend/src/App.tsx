@@ -1,4 +1,5 @@
 import './App.css'
+import { ArrowRight, ArrowUpRight, BookOpen, CircleDot } from 'lucide-react'
 import { AuthProvider } from './auth/AuthContext'
 import { useAuth } from './auth/useAuth'
 import { AccountPanel } from './features/auth/AccountPanel'
@@ -30,7 +31,7 @@ function PaginaPrincipal() {
 
 function PaginaPublica() {
   return (
-    <main>
+    <main className="public-page">
       <header className="topbar">
         <a className="brand" href="#" aria-label="Pasaporte de Saberes, inicio">
           <span className="brand-mark">PS</span>
@@ -44,42 +45,40 @@ function PaginaPublica() {
         <a className="button button-outline" href="#cuenta">Ingresar</a>
       </header>
 
-      <section className="hero">
-        <div className="hero-copy">
+      <section className="public-hero">
+        <div className="public-hero-copy">
           <p className="eyebrow"><span className="eyebrow-dot" /> APRENDER TAMBIÉN ES COMPARTIR</p>
-          <h1>Tu tiempo tiene<br />mucho <span>que enseñar.</span></h1>
-          <p className="hero-description">
+          <h1>Tu tiempo tiene mucho <em>que enseñar.</em></h1>
+          <p className="public-hero-description">
             Una comunidad donde intercambiamos conocimientos, crecemos juntos y cada hora compartida cuenta.
           </p>
-          <a className="button button-primary" href="#cuenta">
-            Únete a la comunidad <span aria-hidden="true">→</span>
-          </a>
-          <div className="hero-note">
-            <span className="note-line" />
+          <div className="public-hero-actions">
+            <a className="button button-primary" href="#cuenta">
+              Únete a la comunidad <ArrowRight size={16} />
+            </a>
+            <a className="button button-outline" href="#areas">
+              Explorar saberes
+            </a>
+          </div>
+          <div className="public-proof">
+            <span className="proof-line" />
             <p>Un saber compartido puede abrir nuevos caminos.</p>
           </div>
         </div>
-        <div
-          className="hero-art"
-          aria-label="Ilustración abstracta de intercambio de conocimientos"
-          role="img"
-        >
-          <div className="art-orbit orbit-one" />
-          <div className="art-orbit orbit-two" />
-          <div className="art-center"><span>+</span></div>
-          <div className="art-token token-one">IDEAS</div>
-          <div className="art-token token-two">TIEMPO</div>
-          <div className="art-token token-three">SABER</div>
-          <span className="art-spark spark-one">✳</span>
-          <span className="art-spark spark-two">✳</span>
-          <span className="art-caption">CIRCULA LO QUE SABES</span>
+        <div className="public-hero-visual" aria-hidden="true">
+          <span className="visual-ring" />
+          <span className="visual-ring visual-ring-alt" />
+          <span className="public-visual-core"><BookOpen /></span>
+          <span className="visual-label visual-label-one"><CircleDot size={11} /> Ideas</span>
+          <span className="visual-label visual-label-two"><CircleDot size={11} /> Tiempo</span>
+          <span className="visual-label visual-label-three"><CircleDot size={11} /> Saberes</span>
         </div>
       </section>
 
-      <section className="intro" id="como-funciona">
+      <section className="public-section" id="como-funciona">
         <p className="eyebrow">UNA IDEA SENCILLA, UN GRAN CAMBIO</p>
-        <div className="intro-content">
-          <h2>Compartes lo que sabes.<br /><span>Aprendes lo que sueñas.</span></h2>
+        <div className="public-section-heading">
+          <h2>Compartes lo que sabes.<br /><em>Aprendes lo que sueñas.</em></h2>
           <p>
             En Pasaporte de Saberes, el conocimiento se mueve de persona a persona.
             Ofrece una habilidad, encuentra algo nuevo que aprender y construye comunidad en el camino.
@@ -87,8 +86,8 @@ function PaginaPublica() {
         </div>
       </section>
 
-      <section className="areas" id="areas">
-        <div className="section-heading">
+      <section className="public-section" id="areas">
+        <div className="public-section-heading">
           <div>
             <p className="eyebrow">TODOS TENEMOS ALGO QUE APORTAR</p>
             <h2>Saberes para cada camino</h2>
@@ -101,7 +100,7 @@ function PaginaPublica() {
               <span className="area-number">{area.number}</span>
               <h3>{area.name}</h3>
               <p>{area.detail}</p>
-              <span className="area-arrow" aria-hidden="true">↗</span>
+              <ArrowUpRight aria-hidden="true" />
             </article>
           ))}
         </div>
@@ -113,7 +112,7 @@ function PaginaPublica() {
         <p className="eyebrow">EL PRÓXIMO PASO EMPIEZA CONTIGO</p>
         <h2>Lo que sabes puede<br />inspirar a alguien.</h2>
         <a className="button button-light" href="#cuenta">
-          Crea tu cuenta <span aria-hidden="true">→</span>
+          Crea tu cuenta <ArrowRight size={16} />
         </a>
       </section>
 

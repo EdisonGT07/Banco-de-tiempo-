@@ -44,6 +44,15 @@ El frontend solo se comunica con la API Spring; es el backend quien lee y escrib
 en Supabase. La publicación de ofertas queda pendiente de un endpoint para
 consultar habilidades e identificadores válidos.
 
+## Otros flujos disponibles
+
+- Consulta y retiro de la billetera.
+- Inscripción, cancelación, handshake, confirmación de fin y reporte de sesiones.
+- Calificación de sesiones completadas.
+- Consulta del pasaporte, rangos y descarga de certificados PDF.
+- Publicación de ofertas cuando se conoce el identificador de una habilidad.
+- Impacto, revisión de reportes y desbloqueo para cuentas administradoras.
+
 ## Validación
 
 ```powershell

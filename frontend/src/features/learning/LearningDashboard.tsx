@@ -1,5 +1,18 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import {
+  ArrowRight,
+  BadgeCheck,
+  BookOpen,
+  CalendarDays,
+  Compass,
+  House,
+  Plus,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  WalletCards,
+} from 'lucide-react'
 import { useAuth } from '../../auth/useAuth'
 import { ApiError } from '../../services/api'
 import {
@@ -11,6 +24,13 @@ import type {
   Oferta,
   SugerenciaAprendizaje,
 } from '../../services/catalogo'
+import type { VistaDominio } from './DomainViews'
+import {
+  VistaBilletera,
+  VistaSesiones,
+  VistaPublicarOferta,
+} from './DomainViews'
+import { VistaAdministracion, VistaPasaporte } from './PassportViews'
 
 const TAMANO_PAGINA = 12
 
@@ -39,6 +59,7 @@ function esModalidadPresencial(modalidad: string): boolean {
 
 export function LearningDashboard() {
   const { perfil, cerrarSesion } = useAuth()
+  const [vistaActiva, setVistaActiva] = useState<VistaDominio>('inicio')
   const [busqueda, setBusqueda] = useState('')
   const [ofertas, setOfertas] = useState<Oferta[]>([])
   const [pagina, setPagina] = useState(0)
@@ -195,10 +216,51 @@ export function LearningDashboard() {
         </a>
         <p className="sidebar-label">TU APRENDIZAJE</p>
         <nav className="learning-nav" aria-label="Navegación de aprendizaje">
-          <a className="learning-nav-link active" href="#inicio"><span>⌂</span> Inicio</a>
-          <a className="learning-nav-link" href="#explorar"><span>⌕</span> Explorar saberes</a>
+          <button
+            className={vistaActiva === 'inicio' ? 'learning-nav-link active' : 'learning-nav-link'}
+            type="button"
+            onClick={() => setVistaActiva('inicio')}
+          ><House /> Inicio</button>
+          <button
+            className={vistaActiva === 'explorar' ? 'learning-nav-link active' : 'learning-nav-link'}
+            type="button"
+            onClick={() => setVistaActiva('explorar')}
+          ><Compass /> Explorar saberes</button>
           {perfil.tipoCuenta === 'PERSONA' && (
-            <a className="learning-nav-link" href="#recomendado"><span>✦</span> Para ti</a>
+            <button
+              className={vistaActiva === 'recomendado' ? 'learning-nav-link active' : 'learning-nav-link'}
+              type="button"
+              onClick={() => setVistaActiva('recomendado')}
+            ><Sparkles /> Para ti</button>
+          )}
+          <button
+            className={vistaActiva === 'billetera' ? 'learning-nav-link active' : 'learning-nav-link'}
+            type="button"
+            onClick={() => setVistaActiva('billetera')}
+          ><WalletCards /> Mi billetera</button>
+          <button
+            className={vistaActiva === 'sesiones' ? 'learning-nav-link active' : 'learning-nav-link'}
+            type="button"
+            onClick={() => setVistaActiva('sesiones')}
+          ><CalendarDays /> Mis sesiones</button>
+          <button
+            className={vistaActiva === 'pasaporte' ? 'learning-nav-link active' : 'learning-nav-link'}
+            type="button"
+            onClick={() => setVistaActiva('pasaporte')}
+          ><BadgeCheck /> Mi pasaporte</button>
+          {perfil.tipoCuenta === 'PERSONA' && (
+            <button
+              className={vistaActiva === 'publicar' ? 'learning-nav-link active' : 'learning-nav-link'}
+              type="button"
+              onClick={() => setVistaActiva('publicar')}
+            ><Plus /> Publicar saber</button>
+          )}
+          {perfil.tipoCuenta === 'ADMIN' && (
+            <button
+              className={vistaActiva === 'administracion' ? 'learning-nav-link active' : 'learning-nav-link'}
+              type="button"
+              onClick={() => setVistaActiva('administracion')}
+            ><ShieldCheck /> Administración</button>
           )}
         </nav>
         <div className="sidebar-profile">
@@ -219,6 +281,15 @@ export function LearningDashboard() {
         </header>
 
         <main className="learning-main" id="inicio">
+          {vistaActiva === 'billetera' && <VistaBilletera />}
+          {vistaActiva === 'sesiones' && <VistaSesiones />}
+          {vistaActiva === 'pasaporte' && <VistaPasaporte />}
+          {vistaActiva === 'publicar' && <VistaPublicarOferta />}
+          {vistaActiva === 'administracion' && <VistaAdministracion />}
+
+          {(vistaActiva === 'inicio' || vistaActiva === 'explorar' || vistaActiva === 'recomendado') && (
+            <>
+          {vistaActiva === 'inicio' && (
           <section className="welcome-card">
             <div className="welcome-copy">
               <p className="eyebrow">TU SIGUIENTE PASO EMPIEZA AQUÍ</p>
@@ -237,14 +308,13 @@ export function LearningDashboard() {
               </form>
             </div>
             <div className="welcome-art" aria-hidden="true">
-              <span className="welcome-sun" />
-              <span className="welcome-book">✧</span>
-              <span className="welcome-star">✦</span>
-              <span className="welcome-dot" />
+              <BookOpen />
             </div>
           </section>
+          )}
 
-          {perfil.tipoCuenta === 'PERSONA' && (
+          {perfil.tipoCuenta === 'PERSONA' &&
+            (vistaActiva === 'inicio' || vistaActiva === 'recomendado') && (
             <section className="learning-section" id="recomendado">
               <div className="learning-section-heading">
                 <div>
@@ -286,7 +356,7 @@ export function LearningDashboard() {
                               : enviandoEsta
                                 ? 'Enviando...'
                                 : 'Quiero aprender esto'}
-                            {!yaSolicitada && !enviandoEsta && <span aria-hidden="true">→</span>}
+                            {!yaSolicitada && !enviandoEsta && <ArrowRight size={14} />}
                           </button>
                         </article>
                       )
@@ -297,17 +367,18 @@ export function LearningDashboard() {
                 </>
               ) : (
                 <div className="learning-empty recommendation-empty">
-                  <span className="empty-icon">✦</span>
+                  <span className="empty-icon"><Sparkles size={18} /></span>
                   <div>
                     <h3>Las buenas conexiones toman tiempo</h3>
                     <p>Cuando haya una coincidencia para tu perfil, la verás aquí. Mientras tanto, explora los saberes disponibles.</p>
                   </div>
-                  <a className="text-action" href="#explorar">Explorar ofertas <span aria-hidden="true">↓</span></a>
+                  <a className="text-action" href="#explorar">Explorar ofertas <ArrowRight size={14} /></a>
                 </div>
               )}
             </section>
           )}
 
+          {(vistaActiva === 'inicio' || vistaActiva === 'explorar') && (
           <section className="learning-section" id="explorar">
             <div className="learning-section-heading">
               <div>
@@ -344,7 +415,7 @@ export function LearningDashboard() {
               </>
             ) : (
               <div className="learning-empty">
-                <span className="empty-icon">⌕</span>
+                <span className="empty-icon"><Search size={18} /></span>
                 <h3>{busqueda ? 'No encontramos resultados' : 'Todavía no hay saberes publicados'}</h3>
                 <p>
                   {busqueda
@@ -354,6 +425,9 @@ export function LearningDashboard() {
               </div>
             )}
           </section>
+          )}
+            </>
+          )}
         </main>
       </div>
     </div>

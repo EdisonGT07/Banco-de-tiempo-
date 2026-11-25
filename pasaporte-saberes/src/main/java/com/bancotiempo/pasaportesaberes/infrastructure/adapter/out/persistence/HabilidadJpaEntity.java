@@ -23,6 +23,11 @@ public class HabilidadJpaEntity {
     protected HabilidadJpaEntity() {
     }
 
+    public HabilidadJpaEntity(String nombre, String categoria) {
+        this.nombre = nombre;
+        this.categoria = categoria;
+    }
+
     public Long getId() {
         return id;
     }

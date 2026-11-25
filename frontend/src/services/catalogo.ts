@@ -38,6 +38,38 @@ export interface FiltrosOfertas {
   tamanoPagina?: number
 }
 
+export interface NuevaOferta {
+  habilidadId: number
+  descripcion: string
+  duracionHoras: number
+  modalidad: Modalidad
+  barrio?: string
+  destinoHoras: 'BILLETERA_PROPIA' | 'FONDO' | 'REGALO'
+  receptorRegaloId?: number
+}
+
+export interface OfertaPublicada {
+  id: number
+  tutorId: number
+  nombreTutor: string
+  habilidadId: number
+  habilidad: string
+  descripcion: string
+  duracionHoras: number
+  modalidad: Modalidad
+  barrio: string | null
+  destinoHoras: string
+  receptorRegaloId: number | null
+  activa: boolean
+  creadaEn: string
+}
+
+export interface Habilidad {
+  id: number
+  nombre: string
+  categoria: string
+}
+
 export function buscarOfertas(filtros: FiltrosOfertas = {}): Promise<Oferta[]> {
   const parametros = new URLSearchParams({
     pagina: String(filtros.pagina ?? 0),
@@ -64,5 +96,26 @@ export function registrarInteresAprendizaje(
   return apiRequest<InteresAprendizaje>('/catalogo/solicitudes-aprendizaje', {
     method: 'POST',
     body: JSON.stringify({ habilidadId }),
+  })
+}
+
+export function publicarOferta(datos: NuevaOferta): Promise<OfertaPublicada> {
+  return apiRequest<OfertaPublicada>('/catalogo/ofertas', {
+    method: 'POST',
+    body: JSON.stringify(datos),
+  })
+}
+
+export function listarHabilidades(): Promise<Habilidad[]> {
+  return apiRequest<Habilidad[]>('/catalogo/habilidades')
+}
+
+export function crearHabilidad(
+  nombre: string,
+  categoria: string,
+): Promise<Habilidad> {
+  return apiRequest<Habilidad>('/catalogo/habilidades', {
+    method: 'POST',
+    body: JSON.stringify({ nombre, categoria }),
   })
 }

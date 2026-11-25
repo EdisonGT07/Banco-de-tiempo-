@@ -17,6 +17,7 @@ import com.bancotiempo.pasaportesaberes.domain.model.QuererAprenderId;
 import com.bancotiempo.pasaportesaberes.domain.model.Sesion;
 
 import java.util.Objects;
+import java.util.List;
 
 public final class CatalogoService implements CatalogoUseCases {
     private final RepositorioUsuario usuarios;
@@ -74,6 +75,39 @@ public final class CatalogoService implements CatalogoUseCases {
             );
             return ofertas.guardar(oferta);
         });
+    }
+
+    @Override
+    public List<CatalogoUseCases.HabilidadPublica> listarHabilidades() {
+        return habilidades.listarTodas().stream()
+                .map(habilidad -> new CatalogoUseCases.HabilidadPublica(
+                        habilidad.id(),
+                        habilidad.nombre(),
+                        habilidad.categoria()))
+                .toList();
+    }
+
+    @Override
+    public CatalogoUseCases.HabilidadPublica registrarHabilidad(
+            CatalogoUseCases.NuevaHabilidad solicitud
+    ) {
+        if (solicitud == null
+                || solicitud.nombre() == null
+                || solicitud.nombre().isBlank()
+                || solicitud.categoria() == null
+                || solicitud.categoria().isBlank()) {
+            throw error(ErrorAplicacionException.Codigo.VALIDACION,
+                    "El nombre y la categoría del saber son obligatorios");
+        }
+        Habilidad guardada = habilidades.guardar(
+                new Habilidad(
+                        null,
+                        solicitud.nombre().trim(),
+                        solicitud.categoria().trim()));
+        return new CatalogoUseCases.HabilidadPublica(
+                guardada.id(),
+                guardada.nombre(),
+                guardada.categoria());
     }
 
     @Override

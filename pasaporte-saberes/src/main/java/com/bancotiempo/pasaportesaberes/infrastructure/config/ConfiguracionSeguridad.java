@@ -135,6 +135,7 @@ public class ConfiguracionSeguridad {
                         ).permitAll()
                         .requestMatchers(
                                 HttpMethod.GET,
+                                "/api/v1/catalogo/habilidades",
                                 "/api/v1/pasaportes/verificar/**",
                                 "/actuator/health",
                                 "/actuator/health/**",
