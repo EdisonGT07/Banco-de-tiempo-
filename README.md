@@ -43,12 +43,14 @@ En PowerShell, para configurarlas de forma permanente:
 > ⚠️ Estos tres secretos deben ser **iguales en todas las máquinas del equipo**.
 > Compartirlos solo por canales privados; nunca subirlos a un repositorio público.
 
-#### Valores del equipo (repo privado — no compartir fuera del equipo)
+#### Valores del equipo
+
+Solicita los valores a un miembro del equipo por un canal privado (no los compartas por aquí).
 
 ```powershell
-[System.Environment]::SetEnvironmentVariable("JWT_SECRET_BASE64", "***REMOVED***", "User")
-[System.Environment]::SetEnvironmentVariable("DOC_PEPPER", "***REMOVED***", "User")
-[System.Environment]::SetEnvironmentVariable("FIRMA_CLAVE", "***REMOVED***", "User")
+[System.Environment]::SetEnvironmentVariable("JWT_SECRET_BASE64", "<valor-secreto>", "User")
+[System.Environment]::SetEnvironmentVariable("DOC_PEPPER", "<valor-secreto>", "User")
+[System.Environment]::SetEnvironmentVariable("FIRMA_CLAVE", "<valor-secreto>", "User")
 ```
 
 ### Parámetros de negocio
