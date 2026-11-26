@@ -13,7 +13,11 @@ import {
   revisarReporte,
 } from '../../services/administracion'
 import type { PanelImpacto } from '../../services/administracion'
+import { Alerta, EstadoVacio } from '../../components/ui'
 
+/* ============================================================
+   PASAPORTE
+   ============================================================ */
 export function VistaPasaporte() {
   const { perfil } = useAuth()
   const personaId = perfil?.id
@@ -27,18 +31,14 @@ export function VistaPasaporte() {
     if (!personaId) return
     let vigente = true
     void obtenerPasaporte(personaId)
-      .then((resultado) => {
-        if (vigente) setPasaporte(resultado)
-      })
+      .then((resultado) => { if (vigente) setPasaporte(resultado) })
       .catch((problema: unknown) => {
-        if (vigente) setError(problema instanceof Error ? problema.message : 'No se pudo cargar el pasaporte.')
+        if (vigente) setError(
+          problema instanceof Error ? problema.message : 'No se pudo cargar el pasaporte.',
+        )
       })
-      .finally(() => {
-        if (vigente) setCargando(false)
-      })
-    return () => {
-      vigente = false
-    }
+      .finally(() => { if (vigente) setCargando(false) })
+    return () => { vigente = false }
   }, [personaId])
 
   async function recalcular() {
@@ -47,92 +47,125 @@ export function VistaPasaporte() {
     try {
       setRangos(await recalcularRangos())
     } catch (problema) {
-      setError(problema instanceof Error ? problema.message : 'No se pudieron recalcular los rangos.')
+      setError(
+        problema instanceof Error ? problema.message : 'No se pudieron recalcular los rangos.',
+      )
     } finally {
       setProcesando(false)
     }
   }
 
   return (
-    <section className="domain-view">
-      <div className="learning-section-heading">
+    <section className="dominio-vista">
+      <div className="dominio-cabecera">
         <div>
-          <p className="eyebrow">TUS APRENDIZAJES Y LOGROS</p>
+          <p className="eyebrow">Tus aprendizajes y logros</p>
           <h2>Mi pasaporte</h2>
         </div>
-        <button className="button button-outline" type="button" disabled={procesando} onClick={() => void recalcular()}>
-          {procesando ? 'Calculando...' : 'Recalcular rangos'}
+        <button
+          className="btn btn-secundario"
+          type="button"
+          disabled={procesando}
+          onClick={() => void recalcular()}
+        >
+          {procesando ? 'Calculando…' : 'Recalcular rangos'}
         </button>
       </div>
+
       {cargando ? (
-        <p className="learning-status" role="status">Abriendo tu pasaporte...</p>
+        <p className="estado-cargando" role="status">Abriendo tu pasaporte…</p>
       ) : pasaporte ? (
         <>
           {rangos && (
-            <div className="rank-grid">
-              {rangos.ensenanza && <RankCard titulo="Enseñanza" rango={rangos.ensenanza.nombre} />}
-              {rangos.aprendizaje && <RankCard titulo="Aprendizaje" rango={rangos.aprendizaje.nombre} />}
+            <div className="rangos-grilla">
+              {rangos.ensenanza && (
+                <TarjetaRango titulo="Enseñanza" rango={rangos.ensenanza.nombre} />
+              )}
+              {rangos.aprendizaje && (
+                <TarjetaRango titulo="Aprendizaje" rango={rangos.aprendizaje.nombre} />
+              )}
             </div>
           )}
+
           {pasaporte.credenciales.length > 0 ? (
-            <div className="credential-grid">
+            <div className="credenciales-grid">
               {pasaporte.credenciales.map((credencial) => (
-                <article className="credential-card" key={credencial.id}>
-                  <div className="credential-badge">{credencial.habilidad.slice(0, 1).toLocaleUpperCase('es')}</div>
-                  <p className="card-kicker">{credencial.nivel}</p>
+                <article className="credencial-card" key={credencial.id}>
+                  <span
+                    className={`credencial-sello${credencial.aval ? ' credencial-sello-validada' : ''}`}
+                    aria-hidden="true"
+                  >
+                    <FileBadge />
+                  </span>
+                  <p className="kicker">{credencial.nivel}</p>
                   <h3>{credencial.habilidad}</h3>
-                  <dl className="credential-metrics">
-                    <div><dt>Horas</dt><dd>{credencial.horasEnsenadas}</dd></div>
-                    <div><dt>Rating</dt><dd>{credencial.rating?.toFixed?.(1) ?? '—'}</dd></div>
+                  <dl className="credencial-metricas">
+                    <div>
+                      <dt>Horas</dt>
+                      <dd>{credencial.horasEnsenadas}</dd>
+                    </div>
+                    <div>
+                      <dt>Rating</dt>
+                      <dd>{credencial.rating?.toFixed?.(1) ?? '—'}</dd>
+                    </div>
                   </dl>
                   {credencial.aval ? (
-                    <span className="aval-badge">Avalado hasta {credencial.aval.vigenciaHasta}</span>
+                    <span className="chip chip-oro" style={{ marginBottom: 'var(--esp-3)' }}>
+                      Avalado hasta {credencial.aval.vigenciaHasta}
+                    </span>
                   ) : (
-                    <span className="aval-badge pending">Sin aval institucional</span>
+                    <span className="chip chip-neutro" style={{ marginBottom: 'var(--esp-3)' }}>
+                      Sin aval institucional
+                    </span>
                   )}
-                  <button
-                    className="text-action"
-                    type="button"
-                    onClick={() => void descargarCertificado(credencial.id).catch((problema: unknown) =>
-                      setError(problema instanceof Error ? problema.message : 'No se pudo descargar.'))
-                    }
-                  >
-                    Descargar certificado <Download size={14} />
-                  </button>
+                  <div className="credencial-accion">
+                    <button
+                      className="accion-texto"
+                      type="button"
+                      onClick={() => void descargarCertificado(credencial.id).catch((problema: unknown) =>
+                        setError(
+                          problema instanceof Error ? problema.message : 'No se pudo descargar.',
+                        ))}
+                    >
+                      Descargar certificado <Download size={14} aria-hidden="true" />
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
           ) : (
-            <div className="learning-empty">
-              <span className="empty-icon"><FileBadge size={18} /></span>
-              <div>
-                <h3>Aún no tienes credenciales visibles</h3>
-                <p>Las credenciales aparecerán al completar sesiones y acumular resultados verificables.</p>
-              </div>
-            </div>
+            <EstadoVacio
+              numero="✦"
+              titulo="Aún no tienes credenciales visibles"
+              descripcion="Las credenciales aparecerán al completar sesiones y acumular resultados verificables."
+            />
           )}
         </>
       ) : null}
-      {error && <p className="learning-error" role="alert">{error}</p>}
+
+      {error && <Alerta tipo="error">{error}</Alerta>}
     </section>
   )
 }
 
-function RankCard({ titulo, rango }: { titulo: string; rango: string }) {
+function TarjetaRango({ titulo, rango }: { titulo: string; rango: string }) {
   return (
-    <article className="rank-card">
+    <article className="rango-card">
       <p>{titulo}</p>
       <strong>{rango}</strong>
     </article>
   )
 }
 
+/* ============================================================
+   ADMINISTRACIÓN
+   ============================================================ */
 export function VistaAdministracion() {
   const { perfil } = useAuth()
   const [panel, setPanel] = useState<PanelImpacto | null>(null)
   const [reporteId, setReporteId] = useState('')
   const [personaId, setPersonaId] = useState('')
-  const [mensaje, setMensaje] = useState<string | null>(null)
+  const [exito, setExito] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [procesando, setProcesando] = useState(false)
 
@@ -140,26 +173,26 @@ export function VistaAdministracion() {
     if (perfil?.tipoCuenta !== 'ADMIN') return
     let vigente = true
     void obtenerPanelImpacto()
-      .then((resultado) => {
-        if (vigente) setPanel(resultado)
-      })
+      .then((resultado) => { if (vigente) setPanel(resultado) })
       .catch((problema: unknown) => {
-        if (vigente) setError(problema instanceof Error ? problema.message : 'No se pudo cargar el panel.')
+        if (vigente) setError(
+          problema instanceof Error ? problema.message : 'No se pudo cargar el panel.',
+        )
       })
-    return () => {
-      vigente = false
-    }
+    return () => { vigente = false }
   }, [perfil?.tipoCuenta])
 
   async function ejecutarAccion(accion: () => Promise<unknown>, texto: string) {
     setProcesando(true)
-    setMensaje(null)
+    setExito(null)
     setError(null)
     try {
       await accion()
-      setMensaje(texto)
+      setExito(texto)
     } catch (problema) {
-      setError(problema instanceof Error ? problema.message : 'No se pudo completar la acción.')
+      setError(
+        problema instanceof Error ? problema.message : 'No se pudo completar la acción.',
+      )
     } finally {
       setProcesando(false)
     }
@@ -167,41 +200,52 @@ export function VistaAdministracion() {
 
   if (perfil?.tipoCuenta !== 'ADMIN') {
     return (
-      <section className="domain-view">
-        <div className="learning-empty">
-          <h3>Esta sección requiere una cuenta administradora</h3>
-        </div>
+      <section className="dominio-vista">
+        <EstadoVacio
+          numero="⊘"
+          titulo="Acceso restringido"
+          descripcion="Esta sección requiere una cuenta administradora."
+        />
       </section>
     )
   }
 
   return (
-    <section className="domain-view">
-      <div className="learning-section-heading">
+    <section className="dominio-vista">
+      <div className="dominio-cabecera">
         <div>
-          <p className="eyebrow">CONTROL Y SEGUIMIENTO</p>
+          <p className="eyebrow">Control y seguimiento</p>
           <h2>Administración</h2>
         </div>
       </div>
+
       {panel && (
-        <div className="impact-grid">
-          <MetricCard label="Horas intercambiadas" value={String(panel.horasIntercambiadas)} />
-          <MetricCard label="Personas formadas" value={String(panel.personasFormadas)} />
-          <MetricCard label="Habilidades nuevas" value={String(panel.habilidadesNuevas)} />
-          <MetricCard label="Credenciales" value={String(panel.credencialesEmitidas)} />
-          <MetricCard label="Verificaciones" value={String(panel.verificaciones)} />
+        <div className="impacto-grilla">
+          <MetricaCard label="Horas intercambiadas" valor={String(panel.horasIntercambiadas)} />
+          <MetricaCard label="Personas formadas" valor={String(panel.personasFormadas)} />
+          <MetricaCard label="Habilidades nuevas" valor={String(panel.habilidadesNuevas)} />
+          <MetricaCard label="Credenciales emitidas" valor={String(panel.credencialesEmitidas)} />
+          <MetricaCard label="Verificaciones" valor={String(panel.verificaciones)} />
         </div>
       )}
-      <div className="session-layout">
-        <div className="domain-card">
+
+      <div className="grilla-2" style={{ marginTop: 'var(--esp-6)' }}>
+        <div className="panel">
           <h3>Revisión de reporte</h3>
-          <label className="domain-field">
-            ID del reporte
-            <input type="number" min="1" value={reporteId} onChange={(event) => setReporteId(event.target.value)} />
-          </label>
-          <div className="action-grid">
+          <div className="campo" style={{ marginBottom: 'var(--esp-4)' }}>
+            <label className="campo-etiqueta" htmlFor="reporte-id">ID del reporte</label>
+            <input
+              id="reporte-id"
+              type="number"
+              min="1"
+              value={reporteId}
+              onChange={(e) => setReporteId(e.target.value)}
+              inputMode="numeric"
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 'var(--esp-3)' }}>
             <button
-              className="button button-primary"
+              className="btn btn-primario"
               type="button"
               disabled={procesando || !reporteId}
               onClick={() => void ejecutarAccion(
@@ -212,7 +256,7 @@ export function VistaAdministracion() {
               Resolver
             </button>
             <button
-              className="button button-outline"
+              className="btn btn-peligro"
               type="button"
               disabled={procesando || !reporteId}
               onClick={() => void ejecutarAccion(
@@ -224,14 +268,22 @@ export function VistaAdministracion() {
             </button>
           </div>
         </div>
-        <div className="domain-card">
+
+        <div className="panel">
           <h3>Desbloquear persona</h3>
-          <label className="domain-field">
-            ID de la persona
-            <input type="number" min="1" value={personaId} onChange={(event) => setPersonaId(event.target.value)} />
-          </label>
+          <div className="campo" style={{ marginBottom: 'var(--esp-4)' }}>
+            <label className="campo-etiqueta" htmlFor="persona-id">ID de la persona</label>
+            <input
+              id="persona-id"
+              type="number"
+              min="1"
+              value={personaId}
+              onChange={(e) => setPersonaId(e.target.value)}
+              inputMode="numeric"
+            />
+          </div>
           <button
-            className="button button-primary domain-submit"
+            className="btn btn-primario"
             type="button"
             disabled={procesando || !personaId}
             onClick={() => void ejecutarAccion(
@@ -243,17 +295,18 @@ export function VistaAdministracion() {
           </button>
         </div>
       </div>
-      {mensaje && <p className="learning-success" role="status">{mensaje}</p>}
-      {error && <p className="learning-error" role="alert">{error}</p>}
+
+      {exito && <Alerta tipo="exito">{exito}</Alerta>}
+      {error && <Alerta tipo="error">{error}</Alerta>}
     </section>
   )
 }
 
-function MetricCard({ label, value }: { label: string; value: string }) {
+function MetricaCard({ label, valor }: { label: string; valor: string }) {
   return (
-    <article className="metric-card">
-      <strong>{value}</strong>
+    <article className="impacto-metrica">
       <p>{label}</p>
+      <strong>{valor}</strong>
     </article>
   )
 }

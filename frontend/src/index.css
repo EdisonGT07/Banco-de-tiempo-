@@ -1,24 +1,77 @@
+/* ============================================================
+   PASAPORTE DE SABERES — Sistema de diseño "Cuaderno de taller"
+   Tokens de color, tipografía, espaciado y forma.
+   ============================================================ */
+
 :root {
-  --canvas: #f7f8f5;
-  --surface: #ffffff;
-  --surface-warm: #f2efe6;
-  --ink: #1d2922;
-  --ink-soft: #526157;
-  --muted: #758078;
-  --line: #dde4dd;
-  --line-strong: #cad5cb;
-  --brand: #315d49;
-  --brand-dark: #1f4635;
-  --brand-soft: #e8efe8;
-  --sage: #b9c9a9;
-  --gold: #c49a5b;
-  --coral: #b85f4b;
-  --serif: Georgia, 'Times New Roman', serif;
-  --sans: Inter, 'Segoe UI', Helvetica, Arial, sans-serif;
-  --shadow-sm: 0 1px 2px rgba(27, 48, 36, 0.05), 0 8px 24px rgba(27, 48, 36, 0.05);
-  --shadow-md: 0 18px 50px rgba(27, 48, 36, 0.11);
-  color: var(--ink);
-  background: var(--canvas);
+  /* Color — tinta y papel */
+  --tinta: #1c2b23;
+  --tinta-suave: #4a5d52;
+  --tinta-apagada: #6d7a6f;
+  --papel: #faf7f0;
+  --superficie: #ffffff;
+  --superficie-calida: #f4f0e6;
+
+  /* Color — bosque (primario) */
+  --bosque: #2d5a3d;
+  --bosque-profundo: #1e3f2a;
+  --bosque-niebla: #e9f0e8;
+  --bosque-10: rgba(45, 90, 61, 0.1);
+
+  /* Color — acentos ceremoniales */
+  --oro: #b08a47;
+  --oro-suave: #f3ead9;
+  --terracota: #b4593d;
+  --terracota-suave: #f7e9e3;
+  --salvia: #8fa98f;
+  --salvia-suave: #eef2ec;
+
+  /* Color — funcional */
+  --linea: #e3e0d6;
+  --linea-fuerte: #cfc9b9;
+
+  /* Tipografía */
+  --display: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
+  --sans: 'Inter Variable', 'Segoe UI', Helvetica, Arial, sans-serif;
+
+  /* Escala tipográfica */
+  --fs-display-xl: clamp(2.75rem, 1.5rem + 5vw, 4.5rem);
+  --fs-display-l: clamp(2rem, 1.2rem + 3vw, 3rem);
+  --fs-display-m: clamp(1.625rem, 1.2rem + 1.5vw, 2.125rem);
+  --fs-titulo-seccion: 1.5rem;
+  --fs-titulo-tarjeta: 1.0625rem;
+  --fs-cuerpo: 0.9375rem;
+  --fs-cuerpo-s: 0.8125rem;
+  --fs-meta: 0.6875rem;
+
+  /* Espaciado (grid 4px) */
+  --esp-1: 4px;
+  --esp-2: 8px;
+  --esp-3: 12px;
+  --esp-4: 16px;
+  --esp-5: 24px;
+  --esp-6: 32px;
+  --esp-7: 48px;
+  --esp-8: 72px;
+
+  /* Forma */
+  --radio-s: 6px;
+  --radio-m: 12px;
+  --radio-pill: 999px;
+
+  /* Sombra */
+  --sombra-1: 0 1px 2px rgba(28, 43, 35, 0.04);
+  --sombra-2: 0 1px 2px rgba(28, 43, 35, 0.04), 0 12px 32px -12px rgba(28, 43, 35, 0.1);
+
+  /* Foco */
+  --anillo-foco: 0 0 0 3px rgba(45, 90, 61, 0.28);
+
+  /* Transiciones */
+  --dur: 160ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  color: var(--tinta);
+  background: var(--papel);
   font-family: var(--sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -33,12 +86,15 @@
 html {
   min-width: 320px;
   scroll-behavior: smooth;
+  color-scheme: light;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  font-size: var(--fs-cuerpo);
+  line-height: 1.5;
 }
 
 button,
@@ -46,6 +102,7 @@ input,
 select,
 textarea {
   font: inherit;
+  font-size: max(1rem, 1em);
 }
 
 button,
@@ -58,10 +115,47 @@ textarea {
 
 ::selection {
   background: #dbe7d6;
-  color: var(--ink);
+  color: var(--tinta);
 }
 
 :focus-visible {
-  outline: 3px solid rgba(49, 93, 73, 0.22);
+  outline: 3px solid rgba(45, 90, 61, 0.28);
   outline-offset: 2px;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Utilidades compartidas */
+.visually-hidden {
+  position: absolute;
+  clip-path: inset(50%);
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
+}
+
+/* Skeleton de carga */
+@keyframes pulso-skeleton {
+  0% { opacity: 1; }
+  50% { opacity: 0.45; }
+  100% { opacity: 1; }
+}
+
+.skeleton {
+  animation: pulso-skeleton 1.6s var(--ease) infinite;
+  background: var(--linea);
+  border-radius: var(--radio-s);
+  color: transparent;
 }

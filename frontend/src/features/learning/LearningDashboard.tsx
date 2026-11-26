@@ -3,12 +3,10 @@ import type { FormEvent } from 'react'
 import {
   ArrowRight,
   BadgeCheck,
-  BookOpen,
   CalendarDays,
   Compass,
   House,
   Plus,
-  Search,
   ShieldCheck,
   Sparkles,
   WalletCards,
@@ -17,10 +15,12 @@ import { useAuth } from '../../auth/useAuth'
 import { ApiError } from '../../services/api'
 import {
   buscarOfertas,
+  listarHabilidades,
   obtenerSugerencias,
   registrarInteresAprendizaje,
 } from '../../services/catalogo'
 import type {
+  Habilidad,
   Oferta,
   SugerenciaAprendizaje,
 } from '../../services/catalogo'
@@ -31,6 +31,13 @@ import {
   VistaPublicarOferta,
 } from './DomainViews'
 import { VistaAdministracion, VistaPasaporte } from './PassportViews'
+import {
+  Alerta,
+  EstadoVacio,
+  IconoCategoria,
+  OfertaSkeleton,
+  useToast,
+} from '../../components/ui'
 
 const TAMANO_PAGINA = 12
 
@@ -53,12 +60,9 @@ function formatoHoras(horas: number): string {
   return `${new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 }).format(horas)} h`
 }
 
-function esModalidadPresencial(modalidad: string): boolean {
-  return modalidad === 'PRESENCIAL'
-}
-
 export function LearningDashboard() {
   const { perfil, cerrarSesion } = useAuth()
+  const toast = useToast()
   const [vistaActiva, setVistaActiva] = useState<VistaDominio>('inicio')
   const [busqueda, setBusqueda] = useState('')
   const [ofertas, setOfertas] = useState<Oferta[]>([])
@@ -70,12 +74,29 @@ export function LearningDashboard() {
   const [sugerencias, setSugerencias] = useState<SugerenciaAprendizaje[]>([])
   const [ofertasSugeridas, setOfertasSugeridas] = useState<Map<number, Oferta>>(new Map())
   const [cargandoSugerencias, setCargandoSugerencias] = useState(true)
-  const [errorSugerencias, setErrorSugerencias] = useState<string | null>(null)
+  const [categorias, setCategorias] = useState<Map<string, string>>(new Map())
   const [habilidadesSolicitadas, setHabilidadesSolicitadas] = useState<Set<number>>(new Set())
   const [solicitandoHabilidad, setSolicitandoHabilidad] = useState<number | null>(null)
-  const [mensajeSolicitud, setMensajeSolicitud] = useState<string | null>(null)
-  const [errorSolicitud, setErrorSolicitud] = useState<string | null>(null)
 
+  /* Mapa habilidad → categoría (para iconos) */
+  useEffect(() => {
+    let vigente = true
+    void listarHabilidades()
+      .then((habilidades: Habilidad[]) => {
+        if (!vigente) return
+        setCategorias(
+          new Map(habilidades.map((habilidad) => [habilidad.nombre, habilidad.categoria])),
+        )
+      })
+      .catch(() => {
+        /* el mapa de categorías es cosmético; si falla, iconos de respaldo */
+      })
+    return () => {
+      vigente = false
+    }
+  }, [])
+
+  /* Búsqueda con debounce */
   useEffect(() => {
     let vigente = true
 
@@ -103,6 +124,7 @@ export function LearningDashboard() {
     }
   }, [busqueda])
 
+  /* Sugerencias */
   useEffect(() => {
     let vigente = true
 
@@ -135,8 +157,9 @@ export function LearningDashboard() {
         setSugerencias(resultados)
         setOfertasSugeridas(mapaOfertas)
       })
-      .catch((error: unknown) => {
-        if (vigente) setErrorSugerencias(mostrarError(error))
+      .catch(() => {
+        /* sugerencias son enriquecimiento; su fallo no bloquea la pantalla */
+        if (vigente) setSugerencias([])
       })
       .finally(() => {
         if (vigente) setCargandoSugerencias(false)
@@ -177,19 +200,16 @@ export function LearningDashboard() {
 
   async function solicitarAprender(sugerencia: SugerenciaAprendizaje) {
     setSolicitandoHabilidad(sugerencia.habilidadId)
-    setMensajeSolicitud(null)
-    setErrorSolicitud(null)
     try {
       await registrarInteresAprendizaje(sugerencia.habilidadId)
       setHabilidadesSolicitadas((anteriores) =>
         new Set(anteriores).add(sugerencia.habilidadId))
-      setMensajeSolicitud('Listo, agregamos esta habilidad a tus intereses.')
+      toast('exito', 'Agregamos esta habilidad a tus intereses.')
     } catch (error) {
-      setErrorSolicitud(
-        error instanceof ApiError && error.status === 409
-          ? error.message
-          : mostrarError(error),
-      )
+      const mensaje = error instanceof ApiError && error.status === 409
+        ? error.message
+        : mostrarError(error)
+      toast('error', mensaje)
     } finally {
       setSolicitandoHabilidad(null)
     }
@@ -208,79 +228,99 @@ export function LearningDashboard() {
     } => resultado.oferta !== undefined)
 
   return (
-    <div className="learning-shell">
-      <aside className="learning-sidebar">
-        <a className="brand learning-brand" href="#inicio">
-          <span className="brand-mark">PS</span>
-          <span>Pasaporte<span className="brand-light"> de Saberes</span></span>
+    <div className="app-shell">
+      {/* Sidebar */}
+      <aside className="sidebar">
+        <a className="marca sidebar-marca" href="#inicio">
+          <span className="marca-sello" aria-hidden="true">PS</span>
+          <span>Pasaporte<span className="marca-suave"> de Saberes</span></span>
         </a>
-        <p className="sidebar-label">TU APRENDIZAJE</p>
-        <nav className="learning-nav" aria-label="Navegación de aprendizaje">
-          <button
-            className={vistaActiva === 'inicio' ? 'learning-nav-link active' : 'learning-nav-link'}
-            type="button"
+        <p className="sidebar-seccion-etiqueta">Tu aprendizaje</p>
+        <nav className="sidebar-nav" aria-label="Navegación de aprendizaje">
+          <NavBoton
+            activo={vistaActiva === 'inicio'}
             onClick={() => setVistaActiva('inicio')}
-          ><House /> Inicio</button>
-          <button
-            className={vistaActiva === 'explorar' ? 'learning-nav-link active' : 'learning-nav-link'}
-            type="button"
+            icono={<House aria-hidden="true" />}
+          >
+            Inicio
+          </NavBoton>
+          <NavBoton
+            activo={vistaActiva === 'explorar'}
             onClick={() => setVistaActiva('explorar')}
-          ><Compass /> Explorar saberes</button>
+            icono={<Compass aria-hidden="true" />}
+          >
+            Explorar
+          </NavBoton>
           {perfil.tipoCuenta === 'PERSONA' && (
-            <button
-              className={vistaActiva === 'recomendado' ? 'learning-nav-link active' : 'learning-nav-link'}
-              type="button"
+            <NavBoton
+              activo={vistaActiva === 'recomendado'}
               onClick={() => setVistaActiva('recomendado')}
-            ><Sparkles /> Para ti</button>
+              icono={<Sparkles aria-hidden="true" />}
+            >
+              Para ti
+            </NavBoton>
           )}
-          <button
-            className={vistaActiva === 'billetera' ? 'learning-nav-link active' : 'learning-nav-link'}
-            type="button"
+          <NavBoton
+            activo={vistaActiva === 'billetera'}
             onClick={() => setVistaActiva('billetera')}
-          ><WalletCards /> Mi billetera</button>
-          <button
-            className={vistaActiva === 'sesiones' ? 'learning-nav-link active' : 'learning-nav-link'}
-            type="button"
+            icono={<WalletCards aria-hidden="true" />}
+          >
+            Billetera
+          </NavBoton>
+          <NavBoton
+            activo={vistaActiva === 'sesiones'}
             onClick={() => setVistaActiva('sesiones')}
-          ><CalendarDays /> Mis sesiones</button>
-          <button
-            className={vistaActiva === 'pasaporte' ? 'learning-nav-link active' : 'learning-nav-link'}
-            type="button"
+            icono={<CalendarDays aria-hidden="true" />}
+          >
+            Sesiones
+          </NavBoton>
+          <NavBoton
+            activo={vistaActiva === 'pasaporte'}
             onClick={() => setVistaActiva('pasaporte')}
-          ><BadgeCheck /> Mi pasaporte</button>
+            icono={<BadgeCheck aria-hidden="true" />}
+          >
+            Pasaporte
+          </NavBoton>
           {perfil.tipoCuenta === 'PERSONA' && (
-            <button
-              className={vistaActiva === 'publicar' ? 'learning-nav-link active' : 'learning-nav-link'}
-              type="button"
+            <NavBoton
+              activo={vistaActiva === 'publicar'}
               onClick={() => setVistaActiva('publicar')}
-            ><Plus /> Publicar saber</button>
+              icono={<Plus aria-hidden="true" />}
+            >
+              Publicar
+            </NavBoton>
           )}
           {perfil.tipoCuenta === 'ADMIN' && (
-            <button
-              className={vistaActiva === 'administracion' ? 'learning-nav-link active' : 'learning-nav-link'}
-              type="button"
+            <NavBoton
+              activo={vistaActiva === 'administracion'}
               onClick={() => setVistaActiva('administracion')}
-            ><ShieldCheck /> Administración</button>
+              icono={<ShieldCheck aria-hidden="true" />}
+            >
+              Administración
+            </NavBoton>
           )}
         </nav>
-        <div className="sidebar-profile">
-          <span className="profile-avatar">{iniciales(perfil.nombre)}</span>
-          <span className="sidebar-profile-copy">
+        <div className="sidebar-perfil">
+          <span className="avatar" aria-hidden="true">{iniciales(perfil.nombre)}</span>
+          <span className="sidebar-perfil-copia">
             <strong>{perfil.nombre}</strong>
             <small>{perfil.correo}</small>
           </span>
         </div>
       </aside>
 
-      <div className="learning-content">
-        <header className="learning-topbar">
-          <div className="breadcrumb">Pasaporte <span>/</span> Mi espacio</div>
-          <button className="button button-outline" type="button" onClick={cerrarSesion}>
+      {/* Contenido */}
+      <div className="contenido-app">
+        <header className="topbar-app">
+          <div className="topbar-breadcrumb">
+            Pasaporte <span>/</span> {ETIQUETAS_VISTA[vistaActiva]}
+          </div>
+          <button className="btn btn-fantasma btn-sm" type="button" onClick={cerrarSesion}>
             Cerrar sesión
           </button>
         </header>
 
-        <main className="learning-main" id="inicio">
+        <main className="main-app" id="inicio">
           {vistaActiva === 'billetera' && <VistaBilletera />}
           {vistaActiva === 'sesiones' && <VistaSesiones />}
           {vistaActiva === 'pasaporte' && <VistaPasaporte />}
@@ -289,143 +329,166 @@ export function LearningDashboard() {
 
           {(vistaActiva === 'inicio' || vistaActiva === 'explorar' || vistaActiva === 'recomendado') && (
             <>
-          {vistaActiva === 'inicio' && (
-          <section className="welcome-card">
-            <div className="welcome-copy">
-              <p className="eyebrow">TU SIGUIENTE PASO EMPIEZA AQUÍ</p>
-              <h1>¡Hola, {perfil.nombre.split(' ')[0]}!</h1>
-              <p>¿Qué te gustaría aprender o compartir hoy?</p>
-              <form className="learning-search" role="search" onSubmit={enviarBusqueda}>
-                <label className="visually-hidden" htmlFor="search-offers">Buscar saberes</label>
-                <input
-                  id="search-offers"
-                  name="busqueda"
-                  type="search"
-                  placeholder="Busca una habilidad, por ejemplo: guitarra"
-                  defaultValue={busqueda}
-                />
-                <button className="button button-primary" type="submit">Buscar</button>
-              </form>
-            </div>
-            <div className="welcome-art" aria-hidden="true">
-              <BookOpen />
-            </div>
-          </section>
-          )}
-
-          {perfil.tipoCuenta === 'PERSONA' &&
-            (vistaActiva === 'inicio' || vistaActiva === 'recomendado') && (
-            <section className="learning-section" id="recomendado">
-              <div className="learning-section-heading">
-                <div>
-                  <p className="eyebrow">CONEXIONES QUE PUEDEN INSPIRARTE</p>
-                  <h2>Un buen lugar para empezar</h2>
-                </div>
-                <span className="section-marker">PARA TI</span>
-              </div>
-              {cargandoSugerencias ? (
-                <p className="learning-status" role="status">Buscando sugerencias para ti...</p>
-              ) : errorSugerencias ? (
-                <p className="learning-error" role="alert">{errorSugerencias}</p>
-              ) : sugerenciasVisibles.length > 0 ? (
-                <>
-                  <div className="recommendation-grid">
-                    {sugerenciasVisibles.map(({ sugerencia, oferta }) => {
-                      const yaSolicitada = habilidadesSolicitadas.has(sugerencia.habilidadId)
-                      const enviandoEsta = solicitandoHabilidad === sugerencia.habilidadId
-                      return (
-                        <article className="recommendation-card" key={sugerencia.ofertaId}>
-                          <div className="recommendation-top">
-                            <span className="recommendation-icon">{oferta.habilidad.slice(0, 1).toLocaleUpperCase('es')}</span>
-                            <span className={sugerencia.cruceMutuo ? 'match-badge mutual' : 'match-badge'}>
-                              {sugerencia.cruceMutuo ? 'Interés mutuo' : 'Sugerencia'}
-                            </span>
-                          </div>
-                          <p className="card-kicker">PODRÍA INTERESARTE</p>
-                          <h3>{oferta.habilidad}</h3>
-                          <p className="recommendation-tutor">Con {oferta.nombreTutor}</p>
-                          <p className="recommendation-description">{oferta.descripcion}</p>
-                          <button
-                            className="text-action"
-                            type="button"
-                            disabled={yaSolicitada || enviandoEsta}
-                            onClick={() => void solicitarAprender(sugerencia)}
-                          >
-                            {yaSolicitada
-                              ? 'Añadido a tus intereses'
-                              : enviandoEsta
-                                ? 'Enviando...'
-                                : 'Quiero aprender esto'}
-                            {!yaSolicitada && !enviandoEsta && <ArrowRight size={14} />}
-                          </button>
-                        </article>
-                      )
-                    })}
+              {vistaActiva === 'inicio' && (
+                <section className="bienvenida" aria-labelledby="bienvenida-titulo">
+                  <div className="bienvenida-copia">
+                    <p className="eyebrow">
+                      <span className="eyebrow-punto" aria-hidden="true" />
+                      Tu siguiente paso empieza aquí
+                    </p>
+                    <h1 className="bienvenida-h1" id="bienvenida-titulo">
+                      Hola, {perfil.nombre.split(' ')[0]}.
+                    </h1>
+                    <p className="bienvenida-subtitulo">
+                      ¿Qué te gustaría aprender o compartir hoy?
+                    </p>
+                    <form
+                      className="busqueda-bienvenida"
+                      role="search"
+                      onSubmit={enviarBusqueda}
+                    >
+                      <label className="visually-hidden" htmlFor="buscar-ofertas">Buscar saberes</label>
+                      <input
+                        id="buscar-ofertas"
+                        name="busqueda"
+                        type="search"
+                        placeholder="Busca una habilidad, por ejemplo: guitarra"
+                        defaultValue={busqueda}
+                      />
+                      <button className="btn btn-primario" type="submit">Buscar</button>
+                    </form>
                   </div>
-                  {mensajeSolicitud && <p className="learning-success" role="status">{mensajeSolicitud}</p>}
-                  {errorSolicitud && <p className="learning-error" role="alert">{errorSolicitud}</p>}
-                </>
-              ) : (
-                <div className="learning-empty recommendation-empty">
-                  <span className="empty-icon"><Sparkles size={18} /></span>
-                  <div>
-                    <h3>Las buenas conexiones toman tiempo</h3>
-                    <p>Cuando haya una coincidencia para tu perfil, la verás aquí. Mientras tanto, explora los saberes disponibles.</p>
+                  <div className="bienvenida-arte" aria-hidden="true">
+                    <Sparkles />
                   </div>
-                  <a className="text-action" href="#explorar">Explorar ofertas <ArrowRight size={14} /></a>
-                </div>
+                </section>
               )}
-            </section>
-          )}
 
-          {(vistaActiva === 'inicio' || vistaActiva === 'explorar') && (
-          <section className="learning-section" id="explorar">
-            <div className="learning-section-heading">
-              <div>
-                <p className="eyebrow">SABERES COMPARTIDOS POR LA COMUNIDAD</p>
-                <h2>Explora nuevas habilidades</h2>
-              </div>
-              <span className="section-marker">{ofertas.length} EN PANTALLA</span>
-            </div>
+              {perfil.tipoCuenta === 'PERSONA' &&
+                (vistaActiva === 'inicio' || vistaActiva === 'recomendado') && (
+                <section className="seccion-app" id="recomendado" aria-labelledby="recomendado-titulo">
+                  <div className="seccion-app-cabecera">
+                    <div>
+                      <p className="eyebrow">Conexiones que pueden inspirarte</p>
+                      <h2 id="recomendado-titulo">Un buen lugar para empezar</h2>
+                    </div>
+                    <span className="seccion-marcador">Para ti</span>
+                  </div>
 
-            {cargandoOfertas ? (
-              <p className="learning-status" role="status">Cargando saberes...</p>
-            ) : errorOfertas ? (
-              <div className="learning-empty">
-                <h3>No pudimos cargar las ofertas</h3>
-                <p>{errorOfertas}</p>
-              </div>
-            ) : ofertas.length > 0 ? (
-              <>
-                <div className="offer-grid">
-                  {ofertas.map((oferta) => (
-                    <OfertaCard oferta={oferta} key={oferta.ofertaId} />
-                  ))}
-                </div>
-                {hayMas && (
-                  <button
-                    className="button button-outline load-more"
-                    type="button"
-                    disabled={cargandoMas}
-                    onClick={() => void cargarMasOfertas()}
-                  >
-                    {cargandoMas ? 'Cargando...' : 'Ver más saberes'}
-                  </button>
-                )}
-              </>
-            ) : (
-              <div className="learning-empty">
-                <span className="empty-icon"><Search size={18} /></span>
-                <h3>{busqueda ? 'No encontramos resultados' : 'Todavía no hay saberes publicados'}</h3>
-                <p>
-                  {busqueda
-                    ? 'Prueba con otra palabra para ampliar tu búsqueda.'
-                    : 'Cuando la comunidad publique ofertas, aparecerán aquí.'}
-                </p>
-              </div>
-            )}
-          </section>
-          )}
+                  {cargandoSugerencias ? (
+                    <div className="ofertas-skeleton" role="status" aria-label="Cargando sugerencias">
+                      <OfertaSkeleton />
+                      <OfertaSkeleton />
+                      <OfertaSkeleton />
+                    </div>
+                  ) : sugerenciasVisibles.length > 0 ? (
+                    <div className="recomendaciones-grid">
+                      {sugerenciasVisibles.map(({ sugerencia, oferta }) => {
+                        const yaSolicitada = habilidadesSolicitadas.has(sugerencia.habilidadId)
+                        const enviandoEsta = solicitandoHabilidad === sugerencia.habilidadId
+                        const categoria = categorias.get(oferta.habilidad) ?? ''
+                        return (
+                          <article className="recomendacion-card" key={sugerencia.ofertaId}>
+                            <div className="recomendacion-top">
+                              <span className="recomendacion-icono" aria-hidden="true">
+                                <IconoCategoria categoria={categoria} />
+                              </span>
+                              <span className={`chip${sugerencia.cruceMutuo ? ' chip-oro' : ' chip-neutro'}`}>
+                                {sugerencia.cruceMutuo ? 'Interés mutuo' : 'Sugerencia'}
+                              </span>
+                            </div>
+                            <p className="kicker">Podría interesarte</p>
+                            <h3>{oferta.habilidad}</h3>
+                            <p className="recomendacion-tutor">Con {oferta.nombreTutor}</p>
+                            <p className="recomendacion-descripcion">{oferta.descripcion}</p>
+                            <button
+                              className="accion-texto recomendacion-accion"
+                              type="button"
+                              disabled={yaSolicitada || enviandoEsta}
+                              onClick={() => void solicitarAprender(sugerencia)}
+                            >
+                              {yaSolicitada
+                                ? 'En tus intereses'
+                                : enviandoEsta
+                                  ? 'Enviando…'
+                                  : 'Quiero aprender esto'}
+                              {!yaSolicitada && !enviandoEsta && <ArrowRight size={14} aria-hidden="true" />}
+                            </button>
+                          </article>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <EstadoVacio
+                      numero="§"
+                      titulo="Las buenas conexiones toman tiempo"
+                      descripcion="Cuando haya una coincidencia para tu perfil, la verás aquí. Mientras tanto, explora los saberes disponibles."
+                      accion={
+                        <button className="accion-texto" type="button" onClick={() => setVistaActiva('explorar')}>
+                          Explorar ofertas <ArrowRight size={14} aria-hidden="true" />
+                        </button>
+                      }
+                    />
+                  )}
+                </section>
+              )}
+
+              {(vistaActiva === 'inicio' || vistaActiva === 'explorar') && (
+                <section className="seccion-app" id="explorar" aria-labelledby="explorar-titulo">
+                  <div className="seccion-app-cabecera">
+                    <div>
+                      <p className="eyebrow">Saberes compartidos por la comunidad</p>
+                      <h2 id="explorar-titulo">Explora nuevas habilidades</h2>
+                    </div>
+                    <span className="seccion-marcador">{ofertas.length} en pantalla</span>
+                  </div>
+
+                  {cargandoOfertas ? (
+                    <div className="ofertas-skeleton" role="status" aria-label="Cargando saberes">
+                      <OfertaSkeleton />
+                      <OfertaSkeleton />
+                      <OfertaSkeleton />
+                      <OfertaSkeleton />
+                      <OfertaSkeleton />
+                      <OfertaSkeleton />
+                    </div>
+                  ) : errorOfertas ? (
+                    <Alerta tipo="error">{errorOfertas}</Alerta>
+                  ) : ofertas.length > 0 ? (
+                    <>
+                      <div className="ofertas-grid">
+                        {ofertas.map((oferta) => (
+                          <TarjetaOferta
+                            oferta={oferta}
+                            categoria={categorias.get(oferta.habilidad) ?? ''}
+                            key={oferta.ofertaId}
+                          />
+                        ))}
+                      </div>
+                      {hayMas && (
+                        <button
+                          className="btn btn-secundario btn-cargar-mas"
+                          type="button"
+                          disabled={cargandoMas}
+                          onClick={() => void cargarMasOfertas()}
+                        >
+                          {cargandoMas ? 'Cargando…' : 'Ver más saberes'}
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <EstadoVacio
+                      numero={busqueda ? '∅' : '01'}
+                      titulo={busqueda ? 'No encontramos resultados' : 'Todavía no hay saberes publicados'}
+                      descripcion={
+                        busqueda
+                          ? 'Prueba con otra palabra para ampliar tu búsqueda.'
+                          : 'Cuando la comunidad publique ofertas, aparecerán aquí.'
+                      }
+                    />
+                  )}
+                </section>
+              )}
             </>
           )}
         </main>
@@ -434,31 +497,78 @@ export function LearningDashboard() {
   )
 }
 
-function OfertaCard({ oferta }: { oferta: Oferta }) {
+const ETIQUETAS_VISTA: Record<VistaDominio, string> = {
+  inicio: 'Inicio',
+  explorar: 'Explorar',
+  recomendado: 'Para ti',
+  billetera: 'Billetera',
+  sesiones: 'Sesiones',
+  pasaporte: 'Pasaporte',
+  publicar: 'Publicar',
+  administracion: 'Administración',
+}
+
+function NavBoton({
+  activo,
+  onClick,
+  icono,
+  children,
+}: {
+  activo: boolean
+  onClick: () => void
+  icono: React.ReactNode
+  children: React.ReactNode
+}) {
   return (
-    <article className="offer-card">
-      <div className="offer-card-top">
-        <span className="offer-icon">{oferta.habilidad.slice(0, 1).toLocaleUpperCase('es')}</span>
-        <span className="offer-duration">{formatoHoras(oferta.duracionHoras)}</span>
+    <button
+      className={`sidebar-nav-enlace${activo ? ' activo' : ''}`}
+      type="button"
+      aria-current={activo ? 'page' : undefined}
+      onClick={onClick}
+    >
+      {icono}
+      {children}
+    </button>
+  )
+}
+
+function TarjetaOferta({
+  oferta,
+  categoria,
+}: {
+  oferta: Oferta
+  categoria: string
+}) {
+  return (
+    <article className="oferta-card">
+      <div className="oferta-card-top">
+        <span className="oferta-icono" aria-hidden="true">
+          <IconoCategoria categoria={categoria} />
+        </span>
+        <span className="chip chip-neutro">{formatoHoras(oferta.duracionHoras)}</span>
       </div>
-      <p className="card-kicker">SABER DE LA COMUNIDAD</p>
+      <p className="kicker">Saber de la comunidad</p>
       <h3>{oferta.habilidad}</h3>
-      <p className="offer-description">{oferta.descripcion}</p>
-      <div className="offer-tutor">
-        <span className="tutor-avatar">{iniciales(oferta.nombreTutor)}</span>
+      <p className="oferta-descripcion">{oferta.descripcion}</p>
+      <div className="oferta-tutor">
+        <span className="avatar avatar-sm" aria-hidden="true">{iniciales(oferta.nombreTutor)}</span>
         <span>Comparte <strong>{oferta.nombreTutor}</strong></span>
       </div>
-      <div className="offer-meta">
-        <span>{esModalidadPresencial(oferta.modalidad) ? 'Presencial' : 'Virtual'}</span>
-        {oferta.barrio && <span>{oferta.barrio}</span>}
+      <div className="oferta-meta">
+        <span className="chip chip-neutro">
+          {oferta.modalidad === 'PRESENCIAL' ? 'Presencial' : 'Virtual'}
+        </span>
+        {oferta.barrio && <span className="chip chip-neutro">{oferta.barrio}</span>}
         {typeof oferta.calificacion === 'number' && (
-          <span aria-label={`Calificación ${oferta.calificacion} de 5`}>★ {oferta.calificacion.toFixed(1)}</span>
+          <span className="chip chip-oro" aria-label={`Calificación ${oferta.calificacion} de 5`}>
+            {oferta.calificacion.toFixed(1)} / 5
+          </span>
         )}
       </div>
       {(oferta.rango || oferta.nivelCredencial) && (
-        <div className="offer-credential">
-          {oferta.rango && <span>{oferta.rango}</span>}
-          {oferta.nivelCredencial && <span>{oferta.nivelCredencial}</span>}
+        <div className="oferta-credencial">
+          {oferta.rango && <span className="chip chip-primario">{oferta.rango}</span>}
+          {oferta.nivelCredencial && <span className="chip chip-primario">{oferta.nivelCredencial}</span>}
         </div>
       )}
     </article>

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { ArrowRight } from 'lucide-react'
 import { ApiError } from '../../services/api'
 import type { PerfilCuenta, RegistroCuenta, Zona } from '../../services/cuentas'
 import { useAuth } from '../../auth/useAuth'
-import { ArrowRight } from 'lucide-react'
+import { Alerta } from '../../components/ui'
 
 type ModoFormulario = 'login' | 'registro'
 
@@ -69,7 +70,6 @@ export function AccountPanel() {
     event.preventDefault()
     setError(null)
     setEnviando(true)
-
     try {
       if (modo === 'login') {
         await iniciarSesion(correo.trim(), contrasena)
@@ -99,26 +99,29 @@ export function AccountPanel() {
   }
 
   return (
-    <section className="account-section" id="cuenta">
-      <div className="account-intro">
-        <p className="eyebrow">TU ESPACIO EN LA COMUNIDAD</p>
-        <h2>Empieza a compartir<br /><em>lo que sabes.</em></h2>
+    <section className="cuenta-seccion" id="cuenta" aria-labelledby="cuenta-titulo">
+      <div className="cuenta-intro">
+        <p className="eyebrow">Tu espacio en la comunidad</p>
+        <h2 id="cuenta-titulo">
+          Empieza a compartir<br />
+          <em>lo que sabes.</em>
+        </h2>
         <p>Ingresa o crea tu cuenta para dar el siguiente paso en Pasaporte de Saberes.</p>
       </div>
 
-      <div className="account-card">
+      <div className="cuenta-tarjeta">
         {cargandoPerfil ? (
-          <p className="account-status" role="status">Comprobando tu sesión...</p>
+          <p className="estado-cargando" role="status">Comprobando tu sesión…</p>
         ) : perfil ? (
           <PerfilPanel perfil={perfil} onCerrarSesion={cerrarSesion} />
         ) : (
           <>
-            <div className="account-tabs" role="tablist" aria-label="Acceso a tu cuenta">
+            <div className="cuenta-tabs" role="tablist" aria-label="Acceso a tu cuenta">
               <button
                 type="button"
                 role="tab"
                 aria-selected={modo === 'login'}
-                className={modo === 'login' ? 'account-tab active' : 'account-tab'}
+                className={`cuenta-tab${modo === 'login' ? ' activo' : ''}`}
                 onClick={() => cambiarModo('login')}
               >
                 Iniciar sesión
@@ -127,54 +130,72 @@ export function AccountPanel() {
                 type="button"
                 role="tab"
                 aria-selected={modo === 'registro'}
-                className={modo === 'registro' ? 'account-tab active' : 'account-tab'}
+                className={`cuenta-tab${modo === 'registro' ? ' activo' : ''}`}
                 onClick={() => cambiarModo('registro')}
               >
                 Crear cuenta
               </button>
             </div>
 
-            {errorRestauracion && <p className="form-message error" role="alert">{errorRestauracion}</p>}
-            <form className="account-form" onSubmit={enviarFormulario}>
+            {errorRestauracion && <Alerta tipo="error">{errorRestauracion}</Alerta>}
+
+            <form
+              className="cuenta-form"
+              onSubmit={enviarFormulario}
+              aria-labelledby={modo === 'login' ? 'titulo-login' : 'titulo-registro'}
+            >
+              <h3 id={modo === 'login' ? 'titulo-login' : 'titulo-registro'} className="visually-hidden">
+                {modo === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+              </h3>
+
               {modo === 'registro' && (
                 <>
-                  <label>
-                    Nombre completo
+                  <div className="campo">
+                    <label className="campo-etiqueta" htmlFor="reg-nombre">Nombre completo</label>
                     <input
+                      id="reg-nombre"
                       autoComplete="name"
                       required
                       value={registro.nombre}
-                      onChange={(event) => setRegistro({ ...registro, nombre: event.target.value })}
+                      onChange={(e) => setRegistro({ ...registro, nombre: e.target.value })}
                     />
-                  </label>
-                  <label>
-                    Número de documento
+                  </div>
+                  <div className="campo">
+                    <label className="campo-etiqueta" htmlFor="reg-documento">Número de documento</label>
                     <input
+                      id="reg-documento"
                       autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
                       required
                       value={registro.documento}
-                      onChange={(event) => setRegistro({ ...registro, documento: event.target.value })}
+                      onChange={(e) => setRegistro({ ...registro, documento: e.target.value })}
                     />
-                  </label>
-                  <label>
-                    Fecha de nacimiento
+                  </div>
+                  <div className="campo">
+                    <label className="campo-etiqueta" htmlFor="reg-nacimiento">Fecha de nacimiento</label>
                     <input
+                      id="reg-nacimiento"
                       autoComplete="bday"
                       type="date"
                       max={fechaMaximaNacimiento()}
                       required
                       value={registro.fechaNacimiento}
-                      onChange={(event) => setRegistro({ ...registro, fechaNacimiento: event.target.value })}
+                      onChange={(e) => setRegistro({ ...registro, fechaNacimiento: e.target.value })}
                     />
-                    <span className="field-hint">Debes tener 18 años o más para crear una cuenta.</span>
-                  </label>
-                  <div className="form-row">
-                    <label>
-                      Zona <span className="optional">(opcional)</span>
+                    <p className="campo-pista" id="pista-nacimiento">Debes tener 18 años o más.</p>
+                  </div>
+                  <div className="form-fila">
+                    <div className="campo">
+                      <label className="campo-etiqueta" htmlFor="reg-zona">
+                        Zona <span className="campo-opcional">(opcional)</span>
+                      </label>
                       <select
+                        id="reg-zona"
                         value={registro.zona}
-                        onChange={(event) => {
-                          const zona = event.target.value
+                        onChange={(e) => {
+                          const zona = e.target.value
                           if (zona === '' || zona === 'URBANA' || zona === 'RURAL') {
                             setRegistro({ ...registro, zona })
                           }
@@ -184,73 +205,77 @@ export function AccountPanel() {
                         <option value="URBANA">Urbana</option>
                         <option value="RURAL">Rural</option>
                       </select>
-                    </label>
-                    <label>
-                      Estrato <span className="optional">(opcional)</span>
+                    </div>
+                    <div className="campo">
+                      <label className="campo-etiqueta" htmlFor="reg-estrato">
+                        Estrato <span className="campo-opcional">(opcional)</span>
+                      </label>
                       <select
+                        id="reg-estrato"
                         value={registro.estrato}
-                        onChange={(event) => setRegistro({ ...registro, estrato: event.target.value })}
+                        onChange={(e) => setRegistro({ ...registro, estrato: e.target.value })}
                       >
                         <option value="">Sin indicar</option>
-                        {[1, 2, 3, 4, 5, 6].map((estrato) => (
-                          <option key={estrato} value={estrato}>{estrato}</option>
+                        {[1, 2, 3, 4, 5, 6].map((est) => (
+                          <option key={est} value={est}>{est}</option>
                         ))}
                       </select>
-                    </label>
+                    </div>
                   </div>
                 </>
               )}
 
-              <label>
-                Correo electrónico
+              <div className="campo">
+                <label className="campo-etiqueta" htmlFor="campo-correo">Correo electrónico</label>
                 <input
+                  id="campo-correo"
                   autoComplete="email"
                   type="email"
                   required
                   value={modo === 'login' ? correo : registro.correo}
-                  onChange={(event) => {
-                    if (modo === 'login') setCorreo(event.target.value)
-                    else setRegistro({ ...registro, correo: event.target.value })
+                  onChange={(e) => {
+                    if (modo === 'login') setCorreo(e.target.value)
+                    else setRegistro({ ...registro, correo: e.target.value })
                   }}
                 />
-              </label>
-              <label>
-                Contraseña
+              </div>
+
+              <div className="campo">
+                <label className="campo-etiqueta" htmlFor="campo-contrasena">Contraseña</label>
                 <input
+                  id="campo-contrasena"
                   autoComplete={modo === 'login' ? 'current-password' : 'new-password'}
                   type="password"
                   required
                   value={modo === 'login' ? contrasena : registro.contrasena}
-                  onChange={(event) => {
-                    if (modo === 'login') setContrasena(event.target.value)
-                    else setRegistro({ ...registro, contrasena: event.target.value })
+                  onChange={(e) => {
+                    if (modo === 'login') setContrasena(e.target.value)
+                    else setRegistro({ ...registro, contrasena: e.target.value })
                   }}
                 />
-              </label>
+              </div>
 
               {modo === 'registro' && (
-                <label className="consent-label">
+                <label className="campo-consentimiento">
                   <input
                     type="checkbox"
                     required
                     checked={registro.aceptaHabeasData}
-                    onChange={(event) => setRegistro({
-                      ...registro,
-                      aceptaHabeasData: event.target.checked,
-                    })}
+                    onChange={(e) => setRegistro({ ...registro, aceptaHabeasData: e.target.checked })}
                   />
                   <span>Acepto el tratamiento de mis datos personales para crear mi cuenta.</span>
                 </label>
               )}
 
-              {error && <p className="form-message error" role="alert">{error}</p>}
-              <button className="button button-primary account-submit" type="submit" disabled={enviando}>
+              {error && <Alerta tipo="error">{error}</Alerta>}
+
+              <button className="btn btn-primario btn-bloque" type="submit" disabled={enviando}>
                 {enviando
-                  ? 'Un momento...'
+                  ? 'Un momento…'
                   : modo === 'login'
                     ? 'Ingresar a mi cuenta'
                     : 'Crear cuenta'}
-                {!enviando && <ArrowRight size={15} />}
+                {!enviando && <ArrowRight size={15} aria-hidden="true" />}
               </button>
             </form>
           </>
@@ -268,20 +293,32 @@ function PerfilPanel({
   onCerrarSesion: () => void
 }) {
   return (
-    <div className="profile-panel">
-      <p className="eyebrow">SESIÓN INICIADA</p>
-      <h3>Hola, {perfil.nombre}</h3>
-      <p className="profile-email">{perfil.correo}</p>
-      <dl className="profile-details">
+    <div className="perfil-panel">
+      <p className="eyebrow">Sesión iniciada</p>
+      <h3>{perfil.nombre}</h3>
+      <p className="perfil-correo">{perfil.correo}</p>
+      <dl className="perfil-tabla">
         <div><dt>Tipo de cuenta</dt><dd>{etiquetaCuenta(perfil)}</dd></div>
         {perfil.estado && <div><dt>Estado</dt><dd>{perfil.estado}</dd></div>}
         {perfil.fechaNacimiento && (
-          <div><dt>Fecha de nacimiento</dt><dd>{perfil.fechaNacimiento}</dd></div>
+          <div>
+            <dt>Fecha de nacimiento</dt>
+            <dd>{perfil.fechaNacimiento}</dd>
+          </div>
         )}
-        {perfil.zona && <div><dt>Zona</dt><dd>{perfil.zona === 'URBANA' ? 'Urbana' : 'Rural'}</dd></div>}
+        {perfil.zona && (
+          <div>
+            <dt>Zona</dt>
+            <dd>{perfil.zona === 'URBANA' ? 'Urbana' : 'Rural'}</dd>
+          </div>
+        )}
         {perfil.estrato && <div><dt>Estrato</dt><dd>{perfil.estrato}</dd></div>}
       </dl>
-      <button className="button button-outline profile-logout" type="button" onClick={onCerrarSesion}>
+      <button
+        className="btn btn-secundario perfil-cerrar"
+        type="button"
+        onClick={onCerrarSesion}
+      >
         Cerrar sesión
       </button>
     </div>

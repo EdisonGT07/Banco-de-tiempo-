@@ -16,9 +16,10 @@ import {
   listarHabilidades,
   publicarOferta,
 } from '../../services/catalogo'
-import type { NuevaOferta } from '../../services/catalogo'
-import type { Habilidad } from '../../services/catalogo'
+import type { Habilidad, NuevaOferta } from '../../services/catalogo'
 import { calificarSesion } from '../../services/reputacion'
+import { Alerta } from '../../components/ui'
+import { Star } from 'lucide-react'
 
 export type VistaDominio =
   | 'inicio'
@@ -30,6 +31,9 @@ export type VistaDominio =
   | 'publicar'
   | 'administracion'
 
+/* ============================================================
+   PUBLICAR OFERTA
+   ============================================================ */
 export function VistaPublicarOferta() {
   const [habilidades, setHabilidades] = useState<Habilidad[]>([])
   const [habilidadId, setHabilidadId] = useState('')
@@ -41,32 +45,22 @@ export function VistaPublicarOferta() {
   const [duracion, setDuracion] = useState('1')
   const [modalidad, setModalidad] = useState<'PRESENCIAL' | 'VIRTUAL'>('VIRTUAL')
   const [barrio, setBarrio] = useState('')
-  const [destinoHoras, setDestinoHoras] = useState<
-    'BILLETERA_PROPIA' | 'FONDO'
-  >('BILLETERA_PROPIA')
+  const [destinoHoras, setDestinoHoras] = useState<'BILLETERA_PROPIA' | 'FONDO'>('BILLETERA_PROPIA')
   const [procesando, setProcesando] = useState(false)
-  const [mensaje, setMensaje] = useState<string | null>(null)
+  const [exito, setExito] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let vigente = true
     void listarHabilidades()
-      .then((resultado) => {
-        if (vigente) setHabilidades(resultado)
-      })
+      .then((resultado) => { if (vigente) setHabilidades(resultado) })
       .catch((problema: unknown) => {
         if (vigente) setError(
-          problema instanceof Error
-            ? problema.message
-            : 'No se pudieron cargar los saberes.',
+          problema instanceof Error ? problema.message : 'No se pudieron cargar los saberes.',
         )
       })
-      .finally(() => {
-        if (vigente) setCargandoHabilidades(false)
-      })
-    return () => {
-      vigente = false
-    }
+      .finally(() => { if (vigente) setCargandoHabilidades(false) })
+    return () => { vigente = false }
   }, [])
 
   async function crearNuevoSaber() {
@@ -74,10 +68,7 @@ export function VistaPublicarOferta() {
     setCreandoSaber(true)
     setError(null)
     try {
-      const habilidad = await crearHabilidad(
-        nuevoSaber.trim(),
-        nuevaCategoria,
-      )
+      const habilidad = await crearHabilidad(nuevoSaber.trim(), nuevaCategoria)
       setHabilidades((actuales) =>
         [...actuales, habilidad].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')))
       setHabilidadId(String(habilidad.id))
@@ -92,7 +83,7 @@ export function VistaPublicarOferta() {
   async function publicar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setProcesando(true)
-    setMensaje(null)
+    setExito(null)
     setError(null)
     try {
       const datos: NuevaOferta = {
@@ -104,7 +95,7 @@ export function VistaPublicarOferta() {
         ...(barrio.trim() ? { barrio: barrio.trim() } : {}),
       }
       await publicarOferta(datos)
-      setMensaje('Oferta publicada correctamente.')
+      setExito('Oferta publicada correctamente.')
       setDescripcion('')
       setDuracion('1')
       setBarrio('')
@@ -116,78 +107,88 @@ export function VistaPublicarOferta() {
   }
 
   return (
-    <section className="domain-view">
-      <div className="learning-section-heading">
+    <section className="dominio-vista">
+      <div className="dominio-cabecera">
         <div>
-          <p className="eyebrow">COMPARTE LO QUE SABES</p>
+          <p className="eyebrow">Comparte lo que sabes</p>
           <h2>Publicar saber</h2>
         </div>
       </div>
-      <form className="domain-card publish-form" onSubmit={publicar}>
-        <div className="publish-grid">
-          <label className="domain-field">
-            Saber
+
+      <form className="publicar-form" onSubmit={publicar} aria-label="Formulario publicar oferta">
+        <div className="publicar-grilla">
+          <div className="campo">
+            <label className="campo-etiqueta" htmlFor="pub-saber">Saber</label>
             <select
+              id="pub-saber"
               required
               value={habilidadId}
-              onChange={(event) => setHabilidadId(event.target.value)}
+              onChange={(e) => setHabilidadId(e.target.value)}
               disabled={cargandoHabilidades}
             >
               <option value="">
-                {cargandoHabilidades ? 'Cargando saberes...' : 'Selecciona un saber'}
+                {cargandoHabilidades ? 'Cargando saberes…' : 'Selecciona un saber'}
               </option>
-              {habilidades.map((habilidad) => (
-                <option key={habilidad.id} value={habilidad.id}>
-                  {habilidad.nombre} · {habilidad.categoria}
-                </option>
+              {habilidades.map((h) => (
+                <option key={h.id} value={h.id}>{h.nombre} · {h.categoria}</option>
               ))}
             </select>
-          </label>
-          <label className="domain-field">
-            Duración por sesión
+          </div>
+          <div className="campo">
+            <label className="campo-etiqueta" htmlFor="pub-duracion">Duración por sesión (horas)</label>
             <input
+              id="pub-duracion"
               type="number"
               min="0.01"
               max="99.99"
               step="0.01"
               required
               value={duracion}
-              onChange={(event) => setDuracion(event.target.value)}
+              onChange={(e) => setDuracion(e.target.value)}
             />
-          </label>
-          <label className="domain-field">
-            Modalidad
-            <select value={modalidad} onChange={(event) =>
-              setModalidad(event.target.value as 'PRESENCIAL' | 'VIRTUAL')}>
+          </div>
+          <div className="campo">
+            <label className="campo-etiqueta" htmlFor="pub-modalidad">Modalidad</label>
+            <select
+              id="pub-modalidad"
+              value={modalidad}
+              onChange={(e) => setModalidad(e.target.value as 'PRESENCIAL' | 'VIRTUAL')}
+            >
               <option value="VIRTUAL">Virtual</option>
               <option value="PRESENCIAL">Presencial</option>
             </select>
-          </label>
-          <label className="domain-field">
-            Destino de las horas
-            <select value={destinoHoras} onChange={(event) =>
-              setDestinoHoras(event.target.value as 'BILLETERA_PROPIA' | 'FONDO')}>
+          </div>
+          <div className="campo">
+            <label className="campo-etiqueta" htmlFor="pub-destino">Destino de las horas</label>
+            <select
+              id="pub-destino"
+              value={destinoHoras}
+              onChange={(e) => setDestinoHoras(e.target.value as 'BILLETERA_PROPIA' | 'FONDO')}
+            >
               <option value="BILLETERA_PROPIA">Mi billetera</option>
               <option value="FONDO">Fondo comunitario</option>
             </select>
-          </label>
+          </div>
         </div>
-        <div className="create-skill-card">
-          <p>¿No encuentras tu saber?</p>
-          <div className="publish-grid">
-            <label className="domain-field">
-              Nombre del saber
+
+        <div className="nuevo-saber-panel" role="group" aria-labelledby="nuevo-saber-titulo">
+          <p id="nuevo-saber-titulo">¿No encuentras tu saber?</p>
+          <div className="publicar-grilla">
+            <div className="campo">
+              <label className="campo-etiqueta" htmlFor="nuevo-saber-nombre">Nombre del saber</label>
               <input
+                id="nuevo-saber-nombre"
                 value={nuevoSaber}
-                onChange={(event) => setNuevoSaber(event.target.value)}
-                placeholder="Ej. Fotografía"
+                onChange={(e) => setNuevoSaber(e.target.value)}
+                placeholder="Ej. Fotografía analógica"
               />
-            </label>
-            <label className="domain-field">
-              Categoría
+            </div>
+            <div className="campo">
+              <label className="campo-etiqueta" htmlFor="nuevo-saber-categoria">Categoría</label>
               <select
+                id="nuevo-saber-categoria"
                 value={nuevaCategoria}
-                onChange={(event) => setNuevaCategoria(event.target.value)}
+                onChange={(e) => setNuevaCategoria(e.target.value)}
               >
                 <option>Tecnología</option>
                 <option>Oficios</option>
@@ -197,169 +198,188 @@ export function VistaPublicarOferta() {
                 <option>Educación</option>
                 <option>Otro</option>
               </select>
-            </label>
+            </div>
           </div>
           <button
-            className="button button-outline"
+            className="btn btn-secundario btn-sm"
             type="button"
             disabled={creandoSaber || !nuevoSaber.trim()}
             onClick={() => void crearNuevoSaber()}
+            style={{ marginTop: 'var(--esp-3)' }}
           >
-            {creandoSaber ? 'Creando...' : 'Agregar como nuevo saber'}
+            {creandoSaber ? 'Creando…' : 'Agregar como nuevo saber'}
           </button>
         </div>
-        <label className="domain-field">
-          Describe tu oferta
+
+        <div className="campo">
+          <label className="campo-etiqueta" htmlFor="pub-descripcion">Describe tu oferta</label>
           <textarea
+            id="pub-descripcion"
             rows={4}
             required
             value={descripcion}
-            onChange={(event) => setDescripcion(event.target.value)}
-            placeholder="Qué enseñarás, para quién y cómo..."
+            onChange={(e) => setDescripcion(e.target.value)}
+            placeholder="Qué enseñarás, para quién y cómo…"
           />
-        </label>
-        <div className="publish-grid">
-          <label className="domain-field">
-            Barrio <span className="optional">(opcional)</span>
-            <input value={barrio} onChange={(event) => setBarrio(event.target.value)} />
-          </label>
         </div>
-        <button className="button button-primary domain-submit" type="submit" disabled={procesando}>
-          {procesando ? 'Publicando...' : 'Publicar oferta'}
+
+        <div className="campo">
+          <label className="campo-etiqueta" htmlFor="pub-barrio">
+            Barrio <span className="campo-opcional">(opcional)</span>
+          </label>
+          <input
+            id="pub-barrio"
+            value={barrio}
+            onChange={(e) => setBarrio(e.target.value)}
+          />
+        </div>
+
+        <button className="btn btn-primario" type="submit" disabled={procesando}>
+          {procesando ? 'Publicando…' : 'Publicar oferta'}
         </button>
       </form>
-      {mensaje && <p className="learning-success" role="status">{mensaje}</p>}
-      {error && <p className="learning-error" role="alert">{error}</p>}
+
+      {exito && <Alerta tipo="exito">{exito}</Alerta>}
+      {error && <Alerta tipo="error">{error}</Alerta>}
     </section>
   )
 }
 
+/* ============================================================
+   BILLETERA
+   ============================================================ */
 export function VistaBilletera() {
   const [billetera, setBilletera] = useState<Billetera | null>(null)
   const [horas, setHoras] = useState('')
   const [cargando, setCargando] = useState(true)
   const [procesando, setProcesando] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [mensaje, setMensaje] = useState<string | null>(null)
+  const [exito, setExito] = useState<string | null>(null)
 
   useEffect(() => {
     let vigente = true
     void consultarBilletera()
-      .then((resultado) => {
-        if (vigente) setBilletera(resultado)
-      })
+      .then((resultado) => { if (vigente) setBilletera(resultado) })
       .catch((problema: unknown) => {
-        if (vigente) setError(problema instanceof Error ? problema.message : 'No se pudo consultar la billetera.')
+        if (vigente) setError(
+          problema instanceof Error ? problema.message : 'No se pudo consultar la billetera.',
+        )
       })
-      .finally(() => {
-        if (vigente) setCargando(false)
-      })
-    return () => {
-      vigente = false
-    }
+      .finally(() => { if (vigente) setCargando(false) })
+    return () => { vigente = false }
   }, [])
 
   async function retirar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
-    setMensaje(null)
+    setExito(null)
     setProcesando(true)
     try {
       await retirarDelFondo(Number(horas))
-      setMensaje('Retiro registrado correctamente.')
+      setExito('Retiro registrado correctamente.')
       setHoras('')
       setBilletera(await consultarBilletera())
     } catch (problema) {
-      setError(problema instanceof Error ? problema.message : 'No se pudo registrar el retiro.')
+      setError(
+        problema instanceof Error ? problema.message : 'No se pudo registrar el retiro.',
+      )
     } finally {
       setProcesando(false)
     }
   }
 
   return (
-    <section className="domain-view">
-      <div className="learning-section-heading">
+    <section className="dominio-vista">
+      <div className="dominio-cabecera">
         <div>
-          <p className="eyebrow">TU BALANCE DE TIEMPO</p>
+          <p className="eyebrow">Tu balance de tiempo</p>
           <h2>Mi billetera</h2>
         </div>
       </div>
+
       {cargando ? (
-        <p className="learning-status" role="status">Consultando tu billetera...</p>
+        <p className="estado-cargando" role="status">Consultando tu billetera…</p>
       ) : billetera ? (
         <>
-          <div className="wallet-grid">
-            <article className="wallet-card wallet-primary">
+          <div className="billetera-grilla">
+            <article className="billetera-card billetera-card-primaria">
               <p>Horas disponibles</p>
               <strong>{billetera.saldoDisponible}</strong>
               <span>Hrs</span>
             </article>
-            <article className="wallet-card">
+            <article className="billetera-card">
               <p>Horas reservadas</p>
               <strong>{billetera.saldoReservado}</strong>
               <span>Hrs</span>
             </article>
-            <article className="wallet-card">
+            <article className="billetera-card">
               <p>Tipo de billetera</p>
-              <strong className="wallet-type">{billetera.tipo}</strong>
+              <strong className="billetera-tipo">{billetera.tipo}</strong>
             </article>
           </div>
-          <div className="domain-card">
+
+          <div className="panel" style={{ maxWidth: 480 }}>
             <h3>Retirar horas del fondo</h3>
-            <p>El retiro usa una clave de idempotencia automática para evitar cobrarse dos veces.</p>
-            <form className="domain-form" onSubmit={retirar}>
-              <label>
-                Cantidad de horas
+            <p>Solicita un retiro del fondo comunitario a tu billetera personal.</p>
+            <form onSubmit={retirar} aria-label="Formulario de retiro">
+              <div className="campo" style={{ marginBottom: 'var(--esp-4)' }}>
+                <label className="campo-etiqueta" htmlFor="horas-retiro">
+                  Cantidad de horas
+                </label>
                 <input
+                  id="horas-retiro"
                   type="number"
                   min="0.01"
                   step="0.01"
                   required
                   value={horas}
-                  onChange={(event) => setHoras(event.target.value)}
+                  onChange={(e) => setHoras(e.target.value)}
                 />
-              </label>
-              <button className="button button-primary" type="submit" disabled={procesando}>
-                {procesando ? 'Procesando...' : 'Solicitar retiro'}
+              </div>
+              <button className="btn btn-primario" type="submit" disabled={procesando}>
+                {procesando ? 'Procesando…' : 'Solicitar retiro'}
               </button>
             </form>
           </div>
         </>
       ) : null}
-      {mensaje && <p className="learning-success" role="status">{mensaje}</p>}
-      {error && <p className="learning-error" role="alert">{error}</p>}
+
+      {exito && <Alerta tipo="exito">{exito}</Alerta>}
+      {error && <Alerta tipo="error">{error}</Alerta>}
     </section>
   )
 }
 
+/* ============================================================
+   SESIONES (rediseñada como panel de operaciones)
+   ============================================================ */
 export function VistaSesiones() {
   const [sesionId, setSesionId] = useState('')
   const [calificacion, setCalificacion] = useState('5')
   const [comentario, setComentario] = useState('')
   const [token, setToken] = useState('')
-  const [codigo, setCodigo] = useState('')
+  const [codigoCorto, setCodigoCorto] = useState('')
   const [motivo, setMotivo] = useState('')
   const [foto, setFoto] = useState<File | undefined>()
   const [consienteEvidencia, setConsienteEvidencia] = useState(false)
   const [sesion, setSesion] = useState<Sesion | null>(null)
+  const [handshakeInfo, setHandshakeInfo] = useState<{ expiraEn: string; codigoCorto: string } | null>(null)
   const [procesando, setProcesando] = useState(false)
-  const [mensaje, setMensaje] = useState<string | null>(null)
+  const [exito, setExito] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  function id(): number {
-    return Number(sesionId)
-  }
+  const idSesion = Number(sesionId)
 
   async function ejecutar(accion: () => Promise<unknown>, textoExito: string) {
     setError(null)
-    setMensaje(null)
+    setExito(null)
     setProcesando(true)
     try {
       const resultado = await accion()
       if (resultado && typeof resultado === 'object' && 'id' in resultado) {
         setSesion(resultado as Sesion)
       }
-      setMensaje(textoExito)
+      setExito(textoExito)
     } catch (problema) {
       setError(problema instanceof Error ? problema.message : 'No se pudo completar la acción.')
     } finally {
@@ -369,15 +389,18 @@ export function VistaSesiones() {
 
   async function generarHandshake() {
     setError(null)
-    setMensaje(null)
+    setExito(null)
     setProcesando(true)
     try {
-      const resultado = await iniciarHandshake(id())
+      const resultado = await iniciarHandshake(idSesion)
       setToken(resultado.token)
-      setCodigo(resultado.codigoCorto)
-      setMensaje(`Handshake generado. Expira el ${new Date(resultado.expiraEn).toLocaleString('es-CO')}.`)
+      setCodigoCorto(resultado.codigoCorto)
+      setHandshakeInfo({ expiraEn: resultado.expiraEn, codigoCorto: resultado.codigoCorto })
+      setExito('Handshake generado. Comparte el código con el participante.')
     } catch (problema) {
-      setError(problema instanceof Error ? problema.message : 'No se pudo iniciar el handshake.')
+      setError(
+        problema instanceof Error ? problema.message : 'No se pudo iniciar el handshake.',
+      )
     } finally {
       setProcesando(false)
     }
@@ -386,183 +409,233 @@ export function VistaSesiones() {
   async function confirmar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     await ejecutar(
-      () => confirmarHandshake(id(), {
-        token,
-        codigoCorto: codigo,
-        consienteEvidencia,
-        foto,
-      }),
-      'Confirmación registrada.',
+      () => confirmarHandshake(idSesion, { token, codigoCorto, consienteEvidencia, foto }),
+      'Confirmación de asistencia registrada.',
     )
   }
 
   return (
-    <section className="domain-view">
-      <div className="learning-section-heading">
+    <section className="dominio-vista">
+      <div className="dominio-cabecera">
         <div>
-          <p className="eyebrow">GESTIONA TU EXPERIENCIA COMPARTIDA</p>
+          <p className="eyebrow">Gestiona tu experiencia compartida</p>
           <h2>Mis sesiones</h2>
         </div>
       </div>
-      <div className="session-layout">
-        <div className="domain-card">
-          <h3>Sesión</h3>
-          <label className="domain-field">
-            Identificador de sesión
-            <input
-              type="number"
-              min="1"
-              value={sesionId}
-              onChange={(event) => setSesionId(event.target.value)}
-              placeholder="Ej. 51"
-            />
-          </label>
-          <div className="action-grid">
+
+      <div className="sesiones-layout">
+        {/* Columna izquierda: acciones directas */}
+        <div style={{ display: 'grid', gap: 'var(--esp-5)' }}>
+
+          {/* Panel ciclo de sesión */}
+          <div className="panel">
+            <h3>Gestionar sesión</h3>
+            <p>Introduce el ID de la sesión para realizar acciones sobre ella.</p>
+            <div className="campo sesion-id-campo">
+              <label className="campo-etiqueta" htmlFor="sesion-id">
+                Identificador de sesión
+              </label>
+              <input
+                id="sesion-id"
+                type="number"
+                min="1"
+                value={sesionId}
+                onChange={(e) => setSesionId(e.target.value)}
+                placeholder="Ej. 12"
+                inputMode="numeric"
+              />
+            </div>
+            <div className="sesion-acciones-grilla">
+              <button
+                className="btn btn-secundario"
+                type="button"
+                disabled={procesando || !sesionId}
+                onClick={() => void ejecutar(() => inscribirseSesion(idSesion), 'Te inscribiste en la sesión.')}
+              >
+                Inscribirme
+              </button>
+              <button
+                className="btn btn-fantasma"
+                type="button"
+                disabled={procesando || !sesionId}
+                onClick={() => void ejecutar(() => cancelarInscripcion(idSesion), 'Inscripción cancelada.')}
+              >
+                Cancelar inscripción
+              </button>
+              <button
+                className="btn btn-secundario"
+                type="button"
+                disabled={procesando || !sesionId}
+                onClick={() => void generarHandshake()}
+              >
+                Generar handshake
+              </button>
+              <button
+                className="btn btn-primario"
+                type="button"
+                disabled={procesando || !sesionId}
+                onClick={() => void ejecutar(() => confirmarFin(idSesion), 'Fin de sesión confirmado.')}
+              >
+                Confirmar fin
+              </button>
+            </div>
+
+            {handshakeInfo && (
+              <div className="handshake-info">
+                <strong>Código de handshake</strong>
+                <span className="handshake-codigo">{handshakeInfo.codigoCorto}</span>
+                <p style={{ marginTop: 'var(--esp-2)', color: 'var(--tinta-suave)', fontSize: 'var(--fs-meta)' }}>
+                  Expira el {new Date(handshakeInfo.expiraEn).toLocaleString('es-CO')}
+                </p>
+              </div>
+            )}
+
+            {sesion && (
+              <div style={{ marginTop: 'var(--esp-4)', padding: 'var(--esp-3)', background: 'var(--papel)', borderRadius: 'var(--radio-s)', fontSize: 'var(--fs-meta)', color: 'var(--tinta-suave)' }}>
+                <strong style={{ color: 'var(--tinta)', display: 'block', marginBottom: 'var(--esp-1)' }}>
+                  Estado: {sesion.estado}
+                </strong>
+                {sesion.aprendizId && <span>Aprendiz ID: {sesion.aprendizId}</span>}
+              </div>
+            )}
+          </div>
+
+          {/* Reportar problema */}
+          <div className="panel">
+            <h3>Reportar un problema</h3>
+            <div className="campo" style={{ marginBottom: 'var(--esp-4)' }}>
+              <label className="campo-etiqueta" htmlFor="reporte-motivo">Motivo</label>
+              <textarea
+                id="reporte-motivo"
+                rows={3}
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Describe qué ocurrió…"
+              />
+            </div>
             <button
-              className="button button-outline"
+              className="btn btn-peligro"
               type="button"
-              disabled={procesando || !sesionId}
+              disabled={procesando || !sesionId || !motivo.trim()}
               onClick={() => void ejecutar(
-                () => inscribirseSesion(id()),
-                'Te inscribiste en la sesión.',
+                () => reportarProblema(idSesion, motivo.trim()),
+                'Problema reportado.',
               )}
             >
-              Inscribirme
-            </button>
-            <button
-              className="button button-outline"
-              type="button"
-              disabled={procesando || !sesionId}
-              onClick={() => void ejecutar(
-                () => cancelarInscripcion(id()),
-                'Inscripción cancelada.',
-              )}
-            >
-              Cancelar
-            </button>
-            <button
-              className="button button-outline"
-              type="button"
-              disabled={procesando || !sesionId}
-              onClick={() => void generarHandshake()}
-            >
-              Generar handshake
-            </button>
-            <button
-              className="button button-primary"
-              type="button"
-              disabled={procesando || !sesionId}
-              onClick={() => void ejecutar(
-                () => confirmarFin(id()),
-                'Fin de sesión confirmado.',
-              )}
-            >
-              Confirmar fin
+              Enviar reporte
             </button>
           </div>
         </div>
 
-        <form className="domain-card" onSubmit={confirmar}>
-          <h3>Confirmar asistencia</h3>
-          <label className="domain-field">
-            Token
-            <input value={token} onChange={(event) => setToken(event.target.value)} required />
-          </label>
-          <label className="domain-field">
-            Código corto
-            <input value={codigo} onChange={(event) => setCodigo(event.target.value)} required />
-          </label>
-          <label className="domain-field">
-            Evidencia fotográfica <span className="optional">(opcional)</span>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(event) => setFoto(event.target.files?.[0])}
-            />
-          </label>
-          <label className="consent-label">
-            <input
-              type="checkbox"
-              checked={consienteEvidencia}
-              onChange={(event) => setConsienteEvidencia(event.target.checked)}
-            />
-            <span>Consiento el uso de la evidencia para verificar la sesión.</span>
-          </label>
-          <button
-            className="button button-primary domain-submit"
-            type="submit"
-            disabled={procesando || !sesionId}
-          >
-            Confirmar asistencia
-          </button>
-        </form>
+        {/* Columna derecha: confirmar asistencia y calificar */}
+        <div style={{ display: 'grid', gap: 'var(--esp-5)' }}>
 
-        <div className="domain-card">
-          <h3>Reportar un problema</h3>
-          <label className="domain-field">
-            Motivo
-            <textarea
-              rows={4}
-              value={motivo}
-              onChange={(event) => setMotivo(event.target.value)}
-              placeholder="Describe qué ocurrió..."
-              required
-            />
-          </label>
-          <button
-            className="button button-outline domain-submit"
-            type="button"
-            disabled={procesando || !sesionId || !motivo.trim()}
-            onClick={() => void ejecutar(
-              () => reportarProblema(id(), motivo.trim()),
-              'Problema reportado.',
-            )}
-          >
-            Enviar reporte
-          </button>
-        </div>
+          {/* Confirmar handshake */}
+          <form className="panel" onSubmit={confirmar} aria-label="Confirmar asistencia">
+            <h3>Confirmar asistencia</h3>
+            <div className="panel-grilla">
+              <div className="campo">
+                <label className="campo-etiqueta" htmlFor="hs-token">Token</label>
+                <input
+                  id="hs-token"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  required
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                />
+              </div>
+              <div className="campo">
+                <label className="campo-etiqueta" htmlFor="hs-codigo">Código corto</label>
+                <input
+                  id="hs-codigo"
+                  value={codigoCorto}
+                  onChange={(e) => setCodigoCorto(e.target.value)}
+                  required
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                />
+              </div>
+              <div className="campo">
+                <label className="campo-etiqueta" htmlFor="hs-foto">
+                  Evidencia fotográfica <span className="campo-opcional">(opcional)</span>
+                </label>
+                <input
+                  id="hs-foto"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => setFoto(e.target.files?.[0])}
+                />
+              </div>
+              <label className="campo-consentimiento">
+                <input
+                  type="checkbox"
+                  checked={consienteEvidencia}
+                  onChange={(e) => setConsienteEvidencia(e.target.checked)}
+                />
+                <span>Consiento el uso de la evidencia para verificar la sesión.</span>
+              </label>
+            </div>
+            <button
+              className="btn btn-primario"
+              type="submit"
+              disabled={procesando || !sesionId}
+              style={{ marginTop: 'var(--esp-4)' }}
+            >
+              Confirmar asistencia
+            </button>
+          </form>
 
-        <div className="domain-card">
-          <h3>Calificar una sesión</h3>
-          <label className="domain-field">
-            Calificación
-            <select value={calificacion} onChange={(event) => setCalificacion(event.target.value)}>
-              {[1, 2, 3, 4, 5].map((valor) => (
-                <option key={valor} value={valor}>{valor} de 5</option>
-              ))}
-            </select>
-          </label>
-          <label className="domain-field">
-            Comentario <span className="optional">(opcional)</span>
-            <textarea
-              rows={3}
-              value={comentario}
-              maxLength={2000}
-              onChange={(event) => setComentario(event.target.value)}
-              placeholder="Cuéntanos cómo fue..."
-            />
-          </label>
-          <button
-            className="button button-primary domain-submit"
-            type="button"
-            disabled={procesando || !sesionId}
-            onClick={() => void ejecutar(
-              () => calificarSesion(id(), Number(calificacion), comentario.trim()),
-              'Reseña registrada.',
-            )}
-          >
-            Enviar calificación
-          </button>
+          {/* Calificar */}
+          <div className="panel">
+            <h3>Calificar una sesión</h3>
+            <div className="panel-grilla">
+              <div className="campo">
+                <label className="campo-etiqueta" htmlFor="cal-calificacion">Calificación</label>
+                <select
+                  id="cal-calificacion"
+                  value={calificacion}
+                  onChange={(e) => setCalificacion(e.target.value)}
+                >
+                  {[1, 2, 3, 4, 5].map((valor) => (
+                    <option key={valor} value={valor}>
+                      {valor} de 5 {'★'.repeat(valor)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="campo">
+                <label className="campo-etiqueta" htmlFor="cal-comentario">
+                  Comentario <span className="campo-opcional">(opcional)</span>
+                </label>
+                <textarea
+                  id="cal-comentario"
+                  rows={3}
+                  value={comentario}
+                  maxLength={2000}
+                  onChange={(e) => setComentario(e.target.value)}
+                  placeholder="Cuéntanos cómo fue…"
+                />
+              </div>
+            </div>
+            <button
+              className="btn btn-primario"
+              type="button"
+              disabled={procesando || !sesionId}
+              style={{ marginTop: 'var(--esp-4)' }}
+              onClick={() => void ejecutar(
+                () => calificarSesion(idSesion, Number(calificacion), comentario.trim()),
+                'Reseña registrada.',
+              )}
+            >
+              <Star size={16} aria-hidden="true" /> Enviar calificación
+            </button>
+          </div>
         </div>
       </div>
-      {sesion && (
-        <div className="session-result">
-          <strong>Estado actual:</strong> {sesion.estado}
-          {sesion.aprendizId && <span>Aprendiz: {sesion.aprendizId}</span>}
-        </div>
-      )}
-      {mensaje && <p className="learning-success" role="status">{mensaje}</p>}
-      {error && <p className="learning-error" role="alert">{error}</p>}
+
+      {exito && <Alerta tipo="exito">{exito}</Alerta>}
+      {error && <Alerta tipo="error">{error}</Alerta>}
     </section>
   )
 }

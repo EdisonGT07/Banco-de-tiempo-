@@ -1,20 +1,32 @@
 import './App.css'
-import { ArrowRight, ArrowUpRight, BookOpen, CircleDot } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, BookOpen, CircleDot, Code2, GraduationCap, Hammer, HeartPulse, Languages, Palette } from 'lucide-react'
 import { AuthProvider } from './auth/AuthContext'
 import { useAuth } from './auth/useAuth'
 import { AccountPanel } from './features/auth/AccountPanel'
 import { LearningDashboard } from './features/learning/LearningDashboard'
+import { ProveedorToast } from './components/ui'
 
-const areas = [
-  { number: '01', name: 'Tecnología', detail: 'Herramientas digitales y programación' },
-  { number: '02', name: 'Oficios', detail: 'Conocimientos prácticos para compartir' },
-  { number: '03', name: 'Bienestar', detail: 'Hábitos, movimiento y equilibrio' },
+/* ------------------------------------------------------------------
+   Áreas de saber — reflejan las 6 categorías reales del catálogo
+   ------------------------------------------------------------------ */
+const AREAS = [
+  { num: '01', nombre: 'Tecnología',    detalle: 'Herramientas digitales, programación y datos', Icono: Code2 },
+  { num: '02', nombre: 'Oficios',       detalle: 'Conocimientos prácticos para el día a día',    Icono: Hammer },
+  { num: '03', nombre: 'Bienestar',     detalle: 'Hábitos, movimiento y equilibrio personal',    Icono: HeartPulse },
+  { num: '04', nombre: 'Idiomas',       detalle: 'Lenguas que abren puertas y conectan mundos',  Icono: Languages },
+  { num: '05', nombre: 'Arte y cultura', detalle: 'Expresión, creatividad y patrimonio',          Icono: Palette },
+  { num: '06', nombre: 'Educación',     detalle: 'Matemáticas, ciencias y pedagogía aplicada',   Icono: GraduationCap },
 ]
 
+/* ------------------------------------------------------------------
+   Raíz
+   ------------------------------------------------------------------ */
 function App() {
   return (
     <AuthProvider>
-      <PaginaPrincipal />
+      <ProveedorToast>
+        <PaginaPrincipal />
+      </ProveedorToast>
     </AuthProvider>
   )
 }
@@ -23,106 +35,127 @@ function PaginaPrincipal() {
   const { perfil, cargandoPerfil } = useAuth()
 
   if (cargandoPerfil) {
-    return <main className="app-initializing" role="status">Cargando tu espacio...</main>
+    return <main className="app-iniciando" role="status">Cargando tu espacio…</main>
   }
 
   return perfil ? <LearningDashboard /> : <PaginaPublica />
 }
 
+/* ------------------------------------------------------------------
+   Landing pública
+   ------------------------------------------------------------------ */
 function PaginaPublica() {
   return (
-    <main className="public-page">
+    <main className="pagina-publica">
+      {/* Topbar */}
       <header className="topbar">
-        <a className="brand" href="#" aria-label="Pasaporte de Saberes, inicio">
-          <span className="brand-mark">PS</span>
-          <span>Pasaporte<span className="brand-light"> de Saberes</span></span>
+        <a className="marca" href="#" aria-label="Pasaporte de Saberes, inicio">
+          <span className="marca-sello" aria-hidden="true">PS</span>
+          <span>Pasaporte<span className="marca-suave"> de Saberes</span></span>
         </a>
         <nav aria-label="Navegación principal">
           <a href="#como-funciona">Cómo funciona</a>
-          <a href="#areas">Áreas de saber</a>
+          <a href="#areas">Áreas</a>
           <a href="#cuenta">Mi cuenta</a>
         </nav>
-        <a className="button button-outline" href="#cuenta">Ingresar</a>
+        <a className="btn btn-secundario btn-sm" href="#cuenta">Ingresar</a>
       </header>
 
-      <section className="public-hero">
-        <div className="public-hero-copy">
-          <p className="eyebrow"><span className="eyebrow-dot" /> APRENDER TAMBIÉN ES COMPARTIR</p>
-          <h1>Tu tiempo tiene mucho <em>que enseñar.</em></h1>
-          <p className="public-hero-description">
-            Una comunidad donde intercambiamos conocimientos, crecemos juntos y cada hora compartida cuenta.
+      {/* Hero */}
+      <section className="hero" aria-labelledby="hero-titulo">
+        <div className="hero-copia">
+          <p className="eyebrow">
+            <span className="eyebrow-punto" aria-hidden="true" />
+            Aprender también es compartir
           </p>
-          <div className="public-hero-actions">
-            <a className="button button-primary" href="#cuenta">
-              Únete a la comunidad <ArrowRight size={16} />
+          <h1 className="hero-h1" id="hero-titulo">
+            Tu tiempo tiene mucho <em>que enseñar.</em>
+          </h1>
+          <p className="hero-descripcion">
+            Una comunidad donde intercambiamos conocimientos, crecemos juntos
+            y cada hora compartida queda registrada en tu pasaporte.
+          </p>
+          <div className="hero-acciones">
+            <a className="btn btn-primario btn-lg" href="#cuenta">
+              Únete a la comunidad <ArrowRight size={16} aria-hidden="true" />
             </a>
-            <a className="button button-outline" href="#areas">
+            <a className="btn btn-secundario btn-lg" href="#areas">
               Explorar saberes
             </a>
           </div>
-          <div className="public-proof">
-            <span className="proof-line" />
+          <div className="hero-prueba">
+            <span className="hero-prueba-linea" aria-hidden="true" />
             <p>Un saber compartido puede abrir nuevos caminos.</p>
           </div>
         </div>
-        <div className="public-hero-visual" aria-hidden="true">
-          <span className="visual-ring" />
-          <span className="visual-ring visual-ring-alt" />
-          <span className="public-visual-core"><BookOpen /></span>
-          <span className="visual-label visual-label-one"><CircleDot size={11} /> Ideas</span>
-          <span className="visual-label visual-label-two"><CircleDot size={11} /> Tiempo</span>
-          <span className="visual-label visual-label-three"><CircleDot size={11} /> Saberes</span>
+        <div className="hero-visual" aria-hidden="true">
+          <span className="hero-anillo" />
+          <span className="hero-anillo hero-anillo-alt" />
+          <span className="hero-visual-nucleo"><BookOpen /></span>
+          <span className="hero-etiqueta hero-etiqueta-1"><CircleDot size={10} /> Ideas</span>
+          <span className="hero-etiqueta hero-etiqueta-2"><CircleDot size={10} /> Tiempo</span>
+          <span className="hero-etiqueta hero-etiqueta-3"><CircleDot size={10} /> Saberes</span>
         </div>
       </section>
 
-      <section className="public-section" id="como-funciona">
-        <p className="eyebrow">UNA IDEA SENCILLA, UN GRAN CAMBIO</p>
-        <div className="public-section-heading">
-          <h2>Compartes lo que sabes.<br /><em>Aprendes lo que sueñas.</em></h2>
+      {/* Cómo funciona */}
+      <section className="seccion-publica" id="como-funciona" aria-labelledby="como-funciona-titulo">
+        <p className="eyebrow">Una idea sencilla, un gran cambio</p>
+        <div className="seccion-cabecera">
+          <h2 id="como-funciona-titulo">
+            Compartes lo que sabes.<br />
+            <em>Aprendes lo que sueñas.</em>
+          </h2>
           <p>
-            En Pasaporte de Saberes, el conocimiento se mueve de persona a persona.
-            Ofrece una habilidad, encuentra algo nuevo que aprender y construye comunidad en el camino.
+            En Pasaporte de Saberes el conocimiento se mueve de persona a persona.
+            Ofrece una habilidad, encuentra algo nuevo que aprender y construye
+            comunidad en el camino.
           </p>
         </div>
       </section>
 
-      <section className="public-section" id="areas">
-        <div className="public-section-heading">
+      {/* Áreas */}
+      <section className="seccion-publica" id="areas" aria-labelledby="areas-titulo">
+        <div className="seccion-cabecera">
           <div>
-            <p className="eyebrow">TODOS TENEMOS ALGO QUE APORTAR</p>
-            <h2>Saberes para cada camino</h2>
+            <p className="eyebrow">Todos tenemos algo que aportar</p>
+            <h2 id="areas-titulo">Saberes para cada camino</h2>
           </div>
-          <p>Una pequeña muestra de todo lo que podemos aprender en comunidad.</p>
+          <p>Una muestra de todo lo que podemos aprender en comunidad.</p>
         </div>
-        <div className="area-grid">
-          {areas.map((area) => (
-            <article className="area-card" key={area.number}>
-              <span className="area-number">{area.number}</span>
-              <h3>{area.name}</h3>
-              <p>{area.detail}</p>
-              <ArrowUpRight aria-hidden="true" />
+        <div className="areas-grid" role="list">
+          {AREAS.map((area) => (
+            <article className="area-card" key={area.num} role="listitem">
+              <span className="area-numero">{area.num}</span>
+              <area.Icono className="area-card-icono" size={18} aria-hidden="true" />
+              <h3>{area.nombre}</h3>
+              <p>{area.detalle}</p>
+              <ArrowUpRight className="area-card-flecha" size={16} aria-hidden="true" />
             </article>
           ))}
         </div>
       </section>
 
+      {/* Cuenta */}
       <AccountPanel />
 
-      <section className="closing" id="empezar">
-        <p className="eyebrow">EL PRÓXIMO PASO EMPIEZA CONTIGO</p>
+      {/* CTA cierre */}
+      <section className="cierre" id="empezar">
+        <p className="eyebrow">El próximo paso empieza contigo</p>
         <h2>Lo que sabes puede<br />inspirar a alguien.</h2>
-        <a className="button button-light" href="#cuenta">
-          Crea tu cuenta <ArrowRight size={16} />
+        <a className="btn btn-blanco btn-lg" href="#cuenta">
+          Crea tu cuenta <ArrowRight size={16} aria-hidden="true" />
         </a>
       </section>
 
-      <footer>
-        <a className="brand brand-footer" href="#">
-          <span className="brand-mark">PS</span>
-          <span>Pasaporte<span className="brand-light"> de Saberes</span></span>
+      {/* Footer */}
+      <footer className="footer">
+        <a className="marca" href="#" style={{ fontSize: '0.8125rem' }}>
+          <span className="marca-sello" style={{ height: '32px', width: '32px', fontSize: '0.6875rem' }} aria-hidden="true">PS</span>
+          <span>Pasaporte<span className="marca-suave"> de Saberes</span></span>
         </a>
         <p>El conocimiento crece cuando se comparte.</p>
-        <span className="footer-tag">APRENDER · COMPARTIR · CRECER</span>
+        <span className="footer-tag">Aprender · Compartir · Crecer</span>
       </footer>
     </main>
   )

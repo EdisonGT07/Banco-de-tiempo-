@@ -30,6 +30,7 @@ public class RepositorioHabilidadJpa implements RepositorioHabilidad {
     }
 
     @Override
+    @Transactional
     public Habilidad guardar(Habilidad habilidad) {
         HabilidadJpaEntity guardada = habilidades.save(
                 new HabilidadJpaEntity(habilidad.nombre(), habilidad.categoria()));
